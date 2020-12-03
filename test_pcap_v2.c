@@ -1,6 +1,6 @@
 /*
 	Compile with
-	gcc test_pcap_v2.c  test_pcap_v2 -lpcap
+	gcc test_pcap_v2.c -o test_pcap_v2 -lpcap
 */
 
 #include <stdio.h>
