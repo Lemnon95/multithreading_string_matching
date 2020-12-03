@@ -109,7 +109,7 @@ const char* dump_UDP_packet(const unsigned char *packet, struct timeval ts,
 }
 	
 // Path of the pcap file containg ONLY udp packets
-const char *filepath = "/home/luca/Documenti/Progetto_multicore/udp.pcap";
+const char *filepath = "udp.pcap";
 
 int main(int argc, char *argv[])
 	{
