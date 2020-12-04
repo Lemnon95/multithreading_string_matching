@@ -55,7 +55,7 @@ int main(int argc, char *argv[]) {
 	
 	char *S[] = {"http", "Linux", "LOCATION", "max-age", "random"}; //String we want to find
 	int size_S = 5;
-	int string_count[] = calloc(size_S*sizeof(int)); //using calloc because we want to initialize every member to 0
+	int *string_count = (int*) calloc(size_S, sizeof(int)); //using calloc because we want to initialize every member to 0
 	
 	/* Loop extracting packets as long as we have something to read */
 	while ((packet = pcap_next(pcap, &header)) != NULL) {
@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
 		const unsigned char* payload = dump_UDP_packet(packet, header.ts, header.caplen); //getting the payload
 		if(payload != NULL) {
 			for (int i = 0; i < size_S; i++) 
-				string_count[i] += kmp_matcher(payload,S[i]);
+				string_count[i] += kmp_matcher((char *)payload,S[i]);
 		}
 		else
 			printf("The packet reading has not been completed succesfully!\n");
