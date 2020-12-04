@@ -161,6 +161,8 @@ const unsigned char* dump_UDP_packet(const unsigned char *packet, struct timeval
 int kmp_matcher (char text[], char pattern[]) {
 	int text_len = strlen(text);
 	int pattern_len = strlen(pattern);
+	if (text_len < pattern_len) //no point trying to match things
+		return 0;
 	int *prefix_array = kmp_prefix(pattern);
 	int i = 0; 
 	int j = 0;
@@ -170,7 +172,7 @@ int kmp_matcher (char text[], char pattern[]) {
 			j++;
 			i++;
 		}
-		if (j == pattern_len) {
+		if (j == pattern_len) { //we have a match
 			occurrences++;
 			j = prefix_array[j]; //look for next match
 		}
