@@ -25,10 +25,15 @@ void too_short(struct timeval ts, const char *truncated_hdr);
 
 /* Procedure that reads a UDP packet and prints its payload content */
 const unsigned char* dump_UDP_packet(const unsigned char *packet, struct timeval ts, unsigned int capture_len);
+
+/*Knuth-Morris-Pratt String Matching Algorithm's functions.*/
+int kmp_matcher (char text[], char pattern[]);
+int *kmp_prefix (char pattern[]);
+
 	
 
 int main(int argc, char *argv[]) {
-	pcap_t *pcap;	//pionter to the pcap file
+	pcap_t *pcap;	//pointer to the pcap file
 	const unsigned char *packet;
 	char errbuf[PCAP_ERRBUF_SIZE];
 	struct pcap_pkthdr header;
@@ -47,18 +52,27 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 
-	int count = 1; //for keeping count of packet's number
+	
+	char *S[] = {"http", "Linux", "LOCATION", "max-age", "random"}; //String we want to find
+	int size_S = 5;
+	int string_count[] = calloc(size_S*sizeof(int)); //using calloc because we want to initialize every member to 0
 	
 	/* Loop extracting packets as long as we have something to read */
 	while ((packet = pcap_next(pcap, &header)) != NULL) {
 		
-		printf("Packet nr: %d\n", count++);
 		const unsigned char* payload = dump_UDP_packet(packet, header.ts, header.caplen); //getting the payload
-		if(payload != NULL)
-			printf("payload= \n%s\n", payload);
+		if(payload != NULL) {
+			for (int i = 0; i < size_S; i++) 
+				string_count[i] += kmp_matcher(payload,S[i]);
+		}
 		else
 			printf("The packet reading has not been completed succesfully!\n");
 	}
+	
+	/* Now we print the output */
+	printf("Printing the number of appereances of each string throughout the entire pcap file:\n");
+	for (int i = 0; i < size_S; i++)
+		printf("%s: %d times!\n", S[i], string_count[i]);
 
 	return 0;
 }
@@ -140,4 +154,55 @@ const unsigned char* dump_UDP_packet(const unsigned char *packet, struct timeval
 	//printf("payload= \n%s\n", payload);
 	
 	return payload;
+}
+
+
+int kmp_matcher (char text[], char pattern[]) {
+	int text_len = strlen(text);
+	int pattern_len = strlen(pattern);
+	int *prefix_array = kmp_prefix(pattern);
+	int i = 0; 
+	int j = 0;
+	int occurrences = 0; //counter for the number of occurrences of pattern in text
+	while (i < text_len) {
+		if (pattern[j] == text[i]) {
+			j++;
+			i++;
+		}
+		if (j == pattern_len) {
+			occurrences++;
+			j = prefix_array[j]; //look for next match
+		}
+		else if (i < text_len && pattern[j] != text[i]) {
+			if (j != 0)
+				j = prefix_array[j-1];
+			else
+				i++;
+		}
+	}
+	free(prefix_array);
+	return occurrences;
+}
+
+int *kmp_prefix (char pattern[]) {
+	int pattern_len = strlen(pattern);
+	int *prefix = malloc(pattern_len*sizeof(int));
+	int j = 0;
+	prefix[0] = 0; //first letter does not have any prefix
+	int i = 1;
+	while (i < pattern_len) {
+		if (pattern[i] == pattern[j]){
+			prefix[i] = j + 1;
+			j++;
+			i++;
+		}
+		else if (j != 0) {
+			j = prefix[j-1];
+		}
+		else {
+			prefix[i] = 0;
+			i++;
+		}
+	}
+	return prefix;	
 }
