@@ -53,8 +53,8 @@ int main(int argc, char *argv[]) {
 	}
 
 	
-	char *S[] = {"http", "Linux", "LOCATION", "max-age", "random"}; //String we want to find
-	int size_S = 5;
+	char *S[] = {"http", "Linux", "LOCATION", "max-age", "random", "a"}; //String we want to find
+	int size_S = 6;
 	int *string_count = (int*) calloc(size_S, sizeof(int)); //using calloc because we want to initialize every member to 0
 	
 	/* Loop extracting packets as long as we have something to read */
@@ -74,6 +74,7 @@ int main(int argc, char *argv[]) {
 	for (int i = 0; i < size_S; i++)
 		printf("%s: %d times!\n", S[i], string_count[i]);
 
+	free(string_count);
 	return 0;
 }
 
