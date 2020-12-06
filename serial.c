@@ -30,9 +30,9 @@ struct sniff_ethernet {
 struct sniff_ip {
 	u_char ip_vhl;		/* version << 4 | header length >> 2 */
 	u_char ip_tos;		/* type of service */
-	u_short ip_len;		/* total length */
+	u_short ip_len;	/* total length */
 	u_short ip_id;		/* identification */
-	u_short ip_off;		/* fragment offset field */
+	u_short ip_off;	/* fragment offset field */
 	#define IP_RF 0x8000		/* reserved fragment flag */
 	#define IP_DF 0x4000		/* don't fragment flag */
 	#define IP_MF 0x2000		/* more fragments flag */
@@ -51,8 +51,8 @@ typedef u_int tcp_seq;
 struct sniff_tcp {
 	u_short th_sport;	/* source port */
 	u_short th_dport;	/* destination port */
-	tcp_seq th_seq;		/* sequence number */
-	tcp_seq th_ack;		/* acknowledgement number */
+	tcp_seq th_seq;	/* sequence number */
+	tcp_seq th_ack;	/* acknowledgement number */
 	u_char th_offx2;	/* data offset, rsvd */
 	#define TH_OFF(th)	(((th)->th_offx2 & 0xf0) >> 4)
 	u_char th_flags;
@@ -71,7 +71,7 @@ struct sniff_tcp {
 };
 
 #define UDP 0
-#define	TCP 1
+#define TCP 1
 
 /* Reports a problem with dumping the packet with the given timestamp. */
 void problem_pkt(struct timeval ts, const char *reason);
@@ -87,7 +87,7 @@ const unsigned char* dump_TCP_packet(const unsigned char *packet);
 
 /*Knuth-Morris-Pratt String Matching Algorithm's functions.*/
 int kmp_matcher (char text[], char pattern[]);
-int *kmp_prefix (char pattern[]);
+void kmp_prefix (char pattern[], int *prefix); 
 
 	
 
@@ -125,12 +125,14 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 
-	
-	char *S[] = {"http", "Linux", "LOCATION", "max-age", "random", "a"}; //String we want to find
+	int count = 0; //actual number of payloads
+	char **array_of_payloads = malloc(sizeof(char *));
+	int array_of_payloads_length = 1; //keeps track of the size of the array of payloads
+	char *S[] = {"http", "Linux", "HTTP", "LOCATION", "a", "b"}; //Strings we want to find
 	int size_S = 6;
-	int *string_count = (int*) calloc(size_S, sizeof(int)); //using calloc because we want to initialize every member to 0
+	int *string_count = calloc(size_S, sizeof(int)); //using calloc because we want to initialize every member to 0
 	
-	/* Loop extracting packets as long as we have something to read */
+	/* Loop extracting packets as long as we have something to read, storing them inside array_of_payloads */
 	while ((packet = pcap_next(pcap, &header)) != NULL) {
 		const unsigned char* payload;
 		if(packet_type == UDP) //udp
@@ -138,19 +140,42 @@ int main(int argc, char *argv[]) {
 		else //tcp
 			payload = dump_TCP_packet(packet); //getting the payload
 			
-		if(payload != NULL) {
-			for (int i = 0; i < size_S; i++) 
-				string_count[i] += kmp_matcher((char *)payload,S[i]);
+		if(payload != NULL) { //we store it in array of payloads
+			array_of_payloads[count] = malloc(strlen((char *)payload)*sizeof(char)); //we have to allocate memory for storing this payload
+			if (count < array_of_payloads_length) {
+				strcpy(array_of_payloads[count], (char *)payload);
+				count++;
+			}
+			else { //count == array_of_payloads_length
+				//it looks like we exceeded maximum capacity of array, so we use a realloc to reallocate memory
+				array_of_payloads = (char **)realloc(array_of_payloads, (array_of_payloads_length*2)*sizeof(char *)); 
+				strcpy(array_of_payloads[count], (char *)payload);
+				count++;
+				array_of_payloads_length *= 2;
+			}
 		}
 		else
 			printf("The packet reading has not been completed succesfully!\n");
 	}
+	
+	/* If array is not full, we reallocate memory */
+	if (!(count == array_of_payloads_length))
+		array_of_payloads = (char **)realloc(array_of_payloads, (count*sizeof(char *)));
+	
+	/* For each payload, we call the string matching algorithm for every string in S */
+	for (int k = 0; k < count; k++)
+		for (int i = 0; i < size_S; i++) 
+				string_count[i] += kmp_matcher(array_of_payloads[k],S[i]);		
 	
 	/* Now we print the output */
 	printf("Printing the number of appereances of each string throughout the entire pcap file:\n");
 	for (int i = 0; i < size_S; i++)
 		printf("%s: %d times!\n", S[i], string_count[i]);
 
+	/* We have to free previously allocated memory */
+	for (int k = 0; k < count; k++) {
+		free(array_of_payloads[k]);
+	} free(array_of_payloads);
 	free(string_count);
 	return 0;
 }
@@ -264,7 +289,8 @@ int kmp_matcher (char text[], char pattern[]) {
 	int pattern_len = strlen(pattern);
 	if (text_len < pattern_len) //no point trying to match things
 		return 0;
-	int *prefix_array = kmp_prefix(pattern);
+	int *prefix_array = malloc(pattern_len*sizeof(int));
+	kmp_prefix(pattern, prefix_array);
 	int i = 0; 
 	int j = 0;
 	int occurrences = 0; //counter for the number of occurrences of pattern in text
@@ -275,7 +301,7 @@ int kmp_matcher (char text[], char pattern[]) {
 		}
 		if (j == pattern_len) { //we have a match
 			occurrences++;
-			j = prefix_array[j]; //look for next match
+			j = prefix_array[j-1]; //look for next match
 		}
 		else if (i < text_len && pattern[j] != text[i]) {
 			if (j != 0)
@@ -284,13 +310,13 @@ int kmp_matcher (char text[], char pattern[]) {
 				i++;
 		}
 	}
+	
 	free(prefix_array);
 	return occurrences;
 }
 
-int *kmp_prefix (char pattern[]) {
+void kmp_prefix (char pattern[], int *prefix) {
 	int pattern_len = strlen(pattern);
-	int *prefix = malloc(pattern_len*sizeof(int));
 	int j = 0;
 	prefix[0] = 0; //first letter does not have any prefix
 	int i = 1;
@@ -308,5 +334,4 @@ int *kmp_prefix (char pattern[]) {
 			i++;
 		}
 	}
-	return prefix;	
 }
