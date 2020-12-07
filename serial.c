@@ -263,7 +263,7 @@ const unsigned char* dump_TCP_packet(const unsigned char *packet) {
 	/* ethernet headers are always exactly 14 bytes */
 	#define SIZE_ETHERNET 14
 
-	const struct sniff_ethernet *ethernet; // The ethernet header 
+	//const struct sniff_ethernet *ethernet; // The ethernet header 
 	const struct sniff_ip *ip; // The IP header 
 	const struct sniff_tcp *tcp; // The TCP header 
 	const unsigned char* payload; // Packet payload 
@@ -272,7 +272,7 @@ const unsigned char* dump_TCP_packet(const unsigned char *packet) {
 	u_int size_tcp;
 
 
-	ethernet = (struct sniff_ethernet*)(packet);
+	//ethernet = (struct sniff_ethernet*)(packet);
 	packet += SIZE_ETHERNET; //move packet pointer adding the ethernet size to get the ip pointer
 	
 	ip = (struct sniff_ip*)(packet); 
