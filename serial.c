@@ -133,9 +133,6 @@ int main(int argc, char *argv[]) {
 	int size_S = 6;
 	int *string_count = calloc(size_S, sizeof(int)); //using calloc because we want to initialize every member to 0
 	
-	/* Start the performance evaluation */
-	double start;
-	GET_TIME(start);
 	
 	/* Loop extracting packets as long as we have something to read, storing them inside array_of_payloads */
 	while ((packet = pcap_next(pcap, &header)) != NULL) {
@@ -166,6 +163,10 @@ int main(int argc, char *argv[]) {
 	/* If array is not full, we reallocate memory */
 	if (!(count == array_of_payloads_length))
 		array_of_payloads = (char **)realloc(array_of_payloads, (count*sizeof(char *)));
+	
+	/* Start the performance evaluation */
+	double start;
+	GET_TIME(start);
 	
 	/* For each payload, we call the string matching algorithm for every string in S */
 	for (int k = 0; k < count; k++)
