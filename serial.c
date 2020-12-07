@@ -8,6 +8,7 @@
 #include <pcap.h>
 #include <netinet/ip.h>
 #include <netinet/if_ether.h>
+#include "timer.h"
 
 /* UDP header struct */
 struct UDP_hdr {
@@ -115,7 +116,7 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	else {
-		printf("USAGE: ./serial <file.pcap>\n");
+		printf("USAGE: ./serial <file.pcap> [tcp/udp]\n");
 		exit(1);
 	}
 
@@ -131,6 +132,10 @@ int main(int argc, char *argv[]) {
 	char *S[] = {"http", "Linux", "HTTP", "LOCATION", "a", "b"}; //Strings we want to find
 	int size_S = 6;
 	int *string_count = calloc(size_S, sizeof(int)); //using calloc because we want to initialize every member to 0
+	
+	/* Start the performance evaluation */
+	double start;
+	GET_TIME(start);
 	
 	/* Loop extracting packets as long as we have something to read, storing them inside array_of_payloads */
 	while ((packet = pcap_next(pcap, &header)) != NULL) {
@@ -165,12 +170,20 @@ int main(int argc, char *argv[]) {
 	/* For each payload, we call the string matching algorithm for every string in S */
 	for (int k = 0; k < count; k++)
 		for (int i = 0; i < size_S; i++) 
-				string_count[i] += kmp_matcher(array_of_payloads[k],S[i]);		
+				string_count[i] += kmp_matcher(array_of_payloads[k],S[i]);
+				
+	
+	/* Stop the performance evaluation */		
+	double finish;
+	GET_TIME(finish);
 	
 	/* Now we print the output */
 	printf("Printing the number of appereances of each string throughout the entire pcap file:\n");
 	for (int i = 0; i < size_S; i++)
 		printf("%s: %d times!\n", S[i], string_count[i]);
+		
+	/* Now we print performance evaluation */
+	printf("Elapsed time = %f seconds\n", finish-start);
 
 	/* We have to free previously allocated memory */
 	for (int k = 0; k < count; k++) {
