@@ -91,6 +91,7 @@ const unsigned char* dump_TCP_packet(const unsigned char *packet);
 int kmp_matcher (char text[], char pattern[]);
 void kmp_prefix (char pattern[], int *prefix); 
 
+	
 
 int main(int argc, char *argv[]) {
 	pcap_t *pcap;	//pointer to the pcap file
@@ -127,77 +128,109 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 	
-	int packet_count = 0; // number of packets in the pcap file
+	/*
+	int packet_count = 0;
+	char **array_of_packets = malloc(sizeof(char *));
+	int array_of_packets_length = 1;
 	
 	
 	while ((packet = pcap_next(pcap, &header)) != NULL) {
+		array_of_packets = (char **)realloc(array_of_packets, (array_of_packets_length*2)*sizeof(char *)); 
+		strcpy(array_of_packets[packet_count], (char *)packet);
 		packet_count++;
-		/*
-		* Qui va aggiunta l'allocazione di memoria per l'array packet
-		*/ 
+		array_of_packets_length *= 2;
 	}
-
-	pcap_close(pcap); 
-	pcap = pcap_open_offline(filepath, errbuf);	//reopening the pcap file
 	
-	const unsigned char* packets[packet_count];
-	
-	/*
-	* L'array packet non va riempito così, ma dinamicamente come indicato sopra
-	*/
-	for (int i=0; i<packet_count; i++) packets[i]=pcap_next(pcap, &header);
-
-	int payload_count = 0; //actual number of payloads
-	char * array_of_payloads[packet_count];
-	
-	/* Start the performance evaluation of first parallel cicle*/
-	double start_first;
-	GET_TIME(start_first);
-	
-	/* Loop extracting packets as long as we have something to read, storing them inside array_of_payloads */
-	#pragma omp parallel for num_threads(thread_count)
 	for (int i=0; i<packet_count; i++) {
-	
-		packet = packets[i];
-		
+		packet = (char *)array_of_packets[i];
 		const unsigned char* payload;
 		if(packet_type == UDP) //udp
 			payload = dump_UDP_packet(packet, header.ts, header.caplen); //getting the payload
 		else //tcp
 			payload = dump_TCP_packet(packet); //getting the payload
-		
+			
+		if(payload != NULL) {
+			printf("payload: %s\n", payload);
+		}
+	}
+	
+	exit(0);
+	*/
+
+	int count = 0; //actual number of payloads
+	char **array_of_payloads = malloc(sizeof(char *));
+	int array_of_payloads_length = 1; //keeps track of the size of the array of payloads	
+	
+	/* Loop extracting packets as long as we have something to read, storing them inside array_of_payloads */
+	while ((packet = pcap_next(pcap, &header)) != NULL) {
+		const unsigned char* payload;
+		if(packet_type == UDP) //udp
+			payload = dump_UDP_packet(packet, header.ts, header.caplen); //getting the payload
+		else //tcp
+			payload = dump_TCP_packet(packet); //getting the payload
+			
 		if(payload != NULL) { //we store it in array of payloads
-			#pragma omp critical
-			array_of_payloads[payload_count++] = (char*)payload;			
+			array_of_payloads[count] = malloc(strlen((char *)payload)*sizeof(char)); //we have to allocate memory for storing this payload
+			if (count < array_of_payloads_length) {
+				strcpy(array_of_payloads[count], (char *)payload);
+				count++;
+			}
+			else { //count == array_of_payloads_length
+				//it looks like we exceeded maximum capacity of array, so we use a realloc to reallocate memory
+				array_of_payloads = (char **)realloc(array_of_payloads, (array_of_payloads_length*2)*sizeof(char *)); 
+				strcpy(array_of_payloads[count], (char *)payload);
+				count++;
+				array_of_payloads_length *= 2;
+			}
 		}
 		else
 			printf("The packet reading has not been completed succesfully!\n");
 	}
 	
-	/* Stop the performance evaluation of first parallel cicle*/		
-	double finish_first;
-	GET_TIME(finish_first);
+	/* If array is not full, we reallocate memory */
+	if (!(count == array_of_payloads_length))
+		array_of_payloads = (char **)realloc(array_of_payloads, (count*sizeof(char *)));
 	
+	/* Start the performance evaluation */
+	double start = omp_get_wtime();
 	
 	char *S[] = {"http", "Linux", "HTTP", "LOCATION", "a", "b"}; //Strings we want to find
+	//char *S[] = {"http"};
 	int size_S = 6;
+	//int size_S = 1;
 	int *string_count = calloc(size_S, sizeof(int)); //using calloc because we want to initialize every member to 0
 	
-	/* Start the performance evaluation of second parallel cicle*/
-	double start_second;
-	GET_TIME(start_second);
-	
-	/* For each payload, we call the string matching algorithm for every string in S */
-	#pragma omp parallel for num_threads(thread_count)
-	for (int k = 0; k < payload_count; k++)
+	/*
+	* 
+	*	NO CRITICAL SECTION
+	* 
+	#pragma omp parallel for collapse(2) num_threads(thread_count) shared(string_count)
+	for (int k = 0; k < count; k++)
 		for (int i = 0; i < size_S; i++) 
-				#pragma omp critical
-				string_count[i] += kmp_matcher(array_of_payloads[k],S[i]);
-				
+			string_count[i] += kmp_matcher(array_of_payloads[k],S[i]);
+	*/
 	
-	/* Stop the performance evaluation of second parallel cicle*/		
-	double finish_second;
-	GET_TIME(finish_second);
+	int *private_string_count;
+	#pragma omp parallel num_threads(thread_count) private (private_string_count) shared(string_count)
+	{
+		int *private_string_count = calloc(size_S, sizeof(int)); //using calloc because we want to initialize every member to 0
+		// For each payload, we call the string matching algorithm for every string in S 
+		#pragma omp for collapse(2) 
+		for (int k = 0; k < count; k++)
+			for (int i = 0; i < size_S; i++) 
+				private_string_count[i] += kmp_matcher(array_of_payloads[k],S[i]);
+		
+		#pragma omp critical
+		{
+		for (int i = 0; i < size_S; i++)
+			string_count[i]+=private_string_count[i];
+		}
+		free(private_string_count);
+	}
+	
+	
+	/* Stop the performance evaluation */		
+	double finish = omp_get_wtime();
 	
 	/* Now we print the output */
 	printf("Printing the number of appereances of each string throughout the entire pcap file:\n");
@@ -205,10 +238,13 @@ int main(int argc, char *argv[]) {
 		printf("%s: %d times!\n", S[i], string_count[i]);
 		
 	/* Now we print performance evaluation */
-	printf("First cicle = %f seconds\n", finish_first-start_first); //performance of first cicle
-	printf("Second cicle = %f seconds\n", finish_second-start_second); //performance of second cicle
-	printf("Elapsed time = %f seconds\n", finish_second-start_first); //performance of parallel program
+	printf("Elapsed time = %f seconds\n", finish-start);
 
+	/* We have to free previously allocated memory */
+	for (int k = 0; k < count; k++) {
+		free(array_of_payloads[k]);
+	} free(array_of_payloads);
+	free(string_count);
 	return 0;
 }
 
