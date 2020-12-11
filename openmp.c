@@ -128,22 +128,27 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 	
-	/*
+	
 	int packet_count = 0;
-	char **array_of_packets = malloc(sizeof(char *));
+	unsigned char **array_of_packets = malloc(sizeof(unsigned char *));
 	int array_of_packets_length = 1;
 	
 	
 	while ((packet = pcap_next(pcap, &header)) != NULL) {
-		array_of_packets = (char **)realloc(array_of_packets, (array_of_packets_length*2)*sizeof(char *)); 
-		strcpy(array_of_packets[packet_count], (char *)packet);
+		array_of_packets = realloc(array_of_packets, (array_of_packets_length)*sizeof(char *));
+		//Allocate packet_count memory position
+		array_of_packets[packet_count] = malloc(strlen((char *)packet)*sizeof(char));
+		//Store packet into array
+		array_of_packets[packet_count] = (unsigned char*) packet; 
 		packet_count++;
-		array_of_packets_length *= 2;
+		array_of_packets_length *= 2;	
 	}
 	
+	packet_count--; //decrease packet count because it is increased in the last cicle iteration
+	
 	for (int i=0; i<packet_count; i++) {
-		packet = (char *)array_of_packets[i];
-		const unsigned char* payload;
+		packet = (const unsigned char*) array_of_packets[i];
+		unsigned char* payload;
 		if(packet_type == UDP) //udp
 			payload = dump_UDP_packet(packet, header.ts, header.caplen); //getting the payload
 		else //tcp
@@ -155,7 +160,7 @@ int main(int argc, char *argv[]) {
 	}
 	
 	exit(0);
-	*/
+	
 
 	int count = 0; //actual number of payloads
 	char **array_of_payloads = malloc(sizeof(char *));
@@ -200,32 +205,32 @@ int main(int argc, char *argv[]) {
 	//int size_S = 1;
 	int *string_count = calloc(size_S, sizeof(int)); //using calloc because we want to initialize every member to 0
 	
-	/*
-	* 
-	*	NO CRITICAL SECTION
-	* 
-	#pragma omp parallel for collapse(2) num_threads(thread_count) shared(string_count)
-	for (int k = 0; k < count; k++)
-		for (int i = 0; i < size_S; i++) 
-			string_count[i] += kmp_matcher(array_of_payloads[k],S[i]);
-	*/
 	
-	int *private_string_count;
-	#pragma omp parallel num_threads(thread_count) private (private_string_count) shared(string_count)
-	{
-		int *private_string_count = calloc(size_S, sizeof(int)); //using calloc because we want to initialize every member to 0
-		// For each payload, we call the string matching algorithm for every string in S 
-		#pragma omp for collapse(2) 
+	
+	if ( thread_count < count ) { //critical section not need
+		#pragma omp parallel for collapse(2) num_threads(thread_count) shared(string_count)
 		for (int k = 0; k < count; k++)
 			for (int i = 0; i < size_S; i++) 
-				private_string_count[i] += kmp_matcher(array_of_payloads[k],S[i]);
-		
-		#pragma omp critical
+				string_count[i] += kmp_matcher(array_of_payloads[k],S[i]);
+	}
+	else { //critical section need
+		int *private_string_count;
+		#pragma omp parallel num_threads(thread_count) private (private_string_count) shared(string_count)
 		{
-		for (int i = 0; i < size_S; i++)
-			string_count[i]+=private_string_count[i];
+			int *private_string_count = calloc(size_S, sizeof(int)); //using calloc because we want to initialize every member to 0
+			// For each payload, we call the string matching algorithm for every string in S 
+			#pragma omp for collapse(2) 
+			for (int k = 0; k < count; k++)
+				for (int i = 0; i < size_S; i++) 
+					private_string_count[i] += kmp_matcher(array_of_payloads[k],S[i]);
+			
+			#pragma omp critical
+			{
+			for (int i = 0; i < size_S; i++)
+				string_count[i]+=private_string_count[i];
+			}
+			free(private_string_count);
 		}
-		free(private_string_count);
 	}
 	
 	
@@ -244,6 +249,12 @@ int main(int argc, char *argv[]) {
 	for (int k = 0; k < count; k++) {
 		free(array_of_payloads[k]);
 	} free(array_of_payloads);
+	
+	// we have to free array of packets
+	for (int k = 0; k < packet_count; k++) {
+		free(array_of_packets[k]);
+	} free(array_of_packets);
+	
 	free(string_count);
 	return 0;
 }
