@@ -129,33 +129,50 @@ int main(int argc, char *argv[]) {
 	}
 	
 	
-	int packet_count = 0;
-	unsigned char **array_of_packets = malloc(sizeof(unsigned char *));
-	int array_of_packets_length = 1;
+	/*
+	*	Qui cerco di leggere il file pcap e salvare in un array di puntatori a puntatori i pacchetti
+	*	Letti da pcap_next()
+	*/
 	
 	
-	while ((packet = pcap_next(pcap, &header)) != NULL) {
-		array_of_packets = realloc(array_of_packets, (array_of_packets_length)*sizeof(char *));
+	int packet_count = 0; //Pacchetti letti fino a ora
+	unsigned char **array_of_packets = malloc(sizeof(char *)); //Qui salvo i pacchetti letti
+	int array_of_packets_length = 1; //Dimensione dell'array
+	
+	
+	while ((packet = pcap_next(pcap, &header)) != NULL) { //finché ci sono pacchetti da leggere
+		//Rialloco array_of_packets con la dimensione di array_of_packets_length aggirnata
+		array_of_packets = realloc(array_of_packets, (array_of_packets_length)*sizeof(unsigned char *));
 		//Allocate packet_count memory position
-		array_of_packets[packet_count] = malloc(strlen((char *)packet)*sizeof(char));
+		array_of_packets[packet_count] = malloc(sizeof(unsigned char *));
 		//Store packet into array
-		array_of_packets[packet_count] = (unsigned char*) packet; 
+		array_of_packets[packet_count] = (unsigned char*) packet;
+		//Counters update 
 		packet_count++;
-		array_of_packets_length *= 2;	
+		array_of_packets_length++;	
 	}
 	
-	packet_count--; //decrease packet count because it is increased in the last cicle iteration
+	/*
+	*	In questo ciclo stampo i payloads di tutti gli elementi di array_of_packets
+	*	Ma stampa sempre lo stesso payloads
+	*	Il problema quasi sicuramente è nel ciclo precedente
+	*/
+	
 	
 	for (int i=0; i<packet_count; i++) {
-		packet = (const unsigned char*) array_of_packets[i];
+		packet = array_of_packets[i];
 		unsigned char* payload;
 		if(packet_type == UDP) //udp
-			payload = dump_UDP_packet(packet, header.ts, header.caplen); //getting the payload
+			//payload = dump_UDP_packet(packet, header.ts, header.caplen); //getting the payload
+			printf("payload %d:\n%s\n", i, dump_UDP_packet(packet, header.ts, header.caplen));
 		else //tcp
-			payload = dump_TCP_packet(packet); //getting the payload
+			//payload = dump_TCP_packet(packet); //getting the payload
+			printf("payload: %d:\n%s\n", i, dump_TCP_packet(packet));
 			
-		if(payload != NULL) {
-			printf("payload: %s\n", payload);
+		if(payload != NULL) { 
+			/*
+			* TODO: save payload into array of payload
+			*/
 		}
 	}
 	
