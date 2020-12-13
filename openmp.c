@@ -11,6 +11,13 @@
 #include "timer.h"
 #include <omp.h>
 
+// PCAP packet struct
+struct pktStruct {
+    struct pcap_pkthdr pkt_header; // header object - *not* a pointer
+    const u_char * pkt_data; // data object
+    long time; // used to compare with each other
+};
+
 /* UDP header struct */
 struct UDP_hdr {
 	u_short	uh_sport;		/* source port */
@@ -97,7 +104,7 @@ int main(int argc, char *argv[]) {
 	pcap_t *pcap;	//pointer to the pcap file
 	const unsigned char *packet;
 	char errbuf[PCAP_ERRBUF_SIZE];
-	struct pcap_pkthdr header;
+	//struct pcap_pkthdr header;
 	char *filepath;
 	int thread_count;
 	int packet_type = UDP; //default udp
@@ -128,118 +135,66 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 	
-	
-	/*
-	*	Qui cerco di leggere il file pcap e salvare in un array di puntatori a puntatori i pacchetti
-	*	Letti da pcap_next()
-	*/
-	
-	
-	int packet_count = 0; //Pacchetti letti fino a ora
-	unsigned char **array_of_packets = malloc(sizeof(char *)); //Qui salvo i pacchetti letti
-	int array_of_packets_length = 1; //Dimensione dell'array
-	
-	
-	while ((packet = pcap_next(pcap, &header)) != NULL) { //finché ci sono pacchetti da leggere
-		//Rialloco array_of_packets con la dimensione di array_of_packets_length aggirnata
-		array_of_packets = realloc(array_of_packets, (array_of_packets_length)*sizeof(unsigned char *));
-		//Allocate packet_count memory position
-		array_of_packets[packet_count] = malloc(sizeof(unsigned char *));
-		//Store packet into array
-		array_of_packets[packet_count] = (unsigned char*) packet;
+	struct pcap_pkthdr *header;
+	const u_char * data; // data object
+	u_char * data_copy; //copy of data object
+	struct pktStruct *array_of_packets = malloc(sizeof(struct pktStruct)); //this array contains each pktStruct
+	int packet_count = 0; //number of packets into pcap file
+	int array_of_packets_length = 1; //array dimension
+	struct pktStruct myStruct;  // struct used to read each packet into the while cicle
+	int i;
+	while((i = pcap_next_ex(pcap,&header,&data)) >=0) {
+
+		myStruct.pkt_header = *header; //get header
+		data_copy = (u_char *)malloc(myStruct.pkt_header.caplen); //allocate memory to copy packet data
+		memcpy(data_copy, data, myStruct.pkt_header.caplen); //copy of data needed because the data pointer change after this loop
+		myStruct.pkt_data = data_copy;
+		myStruct.time = header->ts.tv_sec * 1000000 + header->ts.tv_usec; //time is used to compare packets
+		//push packet struct into array of packets
+		array_of_packets = realloc(array_of_packets, (array_of_packets_length)*sizeof(struct pktStruct));
+		array_of_packets[packet_count] = myStruct; //Store packet into array
 		//Counters update 
 		packet_count++;
-		array_of_packets_length++;	
+		array_of_packets_length++;
 	}
 	
-	/*
-	*	In questo ciclo stampo i payloads di tutti gli elementi di array_of_packets
-	*	Ma stampa sempre lo stesso payloads
-	*	Il problema quasi sicuramente è nel ciclo precedente
-	*/
-	
+	const unsigned char * array_of_payloads[packet_count];
 	
 	for (int i=0; i<packet_count; i++) {
-		packet = array_of_packets[i];
-		unsigned char* payload;
-		if(packet_type == UDP) //udp
-			//payload = dump_UDP_packet(packet, header.ts, header.caplen); //getting the payload
-			printf("payload %d:\n%s\n", i, dump_UDP_packet(packet, header.ts, header.caplen));
-		else //tcp
-			//payload = dump_TCP_packet(packet); //getting the payload
-			printf("payload: %d:\n%s\n", i, dump_TCP_packet(packet));
-			
-		if(payload != NULL) { 
-			/*
-			* TODO: save payload into array of payload
-			*/
-		}
-	}
-	
-	exit(0);
-	
-
-	int count = 0; //actual number of payloads
-	char **array_of_payloads = malloc(sizeof(char *));
-	int array_of_payloads_length = 1; //keeps track of the size of the array of payloads	
-	
-	/* Loop extracting packets as long as we have something to read, storing them inside array_of_payloads */
-	while ((packet = pcap_next(pcap, &header)) != NULL) {
+		packet = array_of_packets[i].pkt_data; // Get data of current packet
 		const unsigned char* payload;
 		if(packet_type == UDP) //udp
-			payload = dump_UDP_packet(packet, header.ts, header.caplen); //getting the payload
+			payload = dump_UDP_packet(packet, header->ts, header->caplen); // Getting the payload
 		else //tcp
-			payload = dump_TCP_packet(packet); //getting the payload
+			payload = dump_TCP_packet(packet); // Getting the payload
 			
-		if(payload != NULL) { //we store it in array of payloads
-			array_of_payloads[count] = malloc(strlen((char *)payload)*sizeof(char)); //we have to allocate memory for storing this payload
-			if (count < array_of_payloads_length) {
-				strcpy(array_of_payloads[count], (char *)payload);
-				count++;
-			}
-			else { //count == array_of_payloads_length
-				//it looks like we exceeded maximum capacity of array, so we use a realloc to reallocate memory
-				array_of_payloads = (char **)realloc(array_of_payloads, (array_of_payloads_length*2)*sizeof(char *)); 
-				strcpy(array_of_payloads[count], (char *)payload);
-				count++;
-				array_of_payloads_length *= 2;
-			}
-		}
-		else
-			printf("The packet reading has not been completed succesfully!\n");
+		if(payload != NULL) // Save payload into array of payload
+			array_of_payloads[i] = payload;
 	}
 	
-	/* If array is not full, we reallocate memory */
-	if (!(count == array_of_payloads_length))
-		array_of_payloads = (char **)realloc(array_of_payloads, (count*sizeof(char *)));
+	char *S[] = {"http", "Linux", "HTTP", "LOCATION", "a", "b"}; //Strings we want to find
+	int size_S = 6;
+	int *string_count = calloc(size_S, sizeof(int)); // Using calloc because we want to initialize every member to 0
 	
 	/* Start the performance evaluation */
 	double start = omp_get_wtime();
 	
-	char *S[] = {"http", "Linux", "HTTP", "LOCATION", "a", "b"}; //Strings we want to find
-	//char *S[] = {"http"};
-	int size_S = 6;
-	//int size_S = 1;
-	int *string_count = calloc(size_S, sizeof(int)); //using calloc because we want to initialize every member to 0
-	
-	
-	
-	if ( thread_count < count ) { //critical section not need
+	if ( thread_count < packet_count ) { // Critical section not need
 		#pragma omp parallel for collapse(2) num_threads(thread_count) shared(string_count)
-		for (int k = 0; k < count; k++)
+		for (int k = 0; k < packet_count; k++)
 			for (int i = 0; i < size_S; i++) 
-				string_count[i] += kmp_matcher(array_of_payloads[k],S[i]);
+				string_count[i] += kmp_matcher((char *)array_of_payloads[k],S[i]);
 	}
-	else { //critical section need
+	else { // Critical section need
 		int *private_string_count;
 		#pragma omp parallel num_threads(thread_count) private (private_string_count) shared(string_count)
 		{
-			int *private_string_count = calloc(size_S, sizeof(int)); //using calloc because we want to initialize every member to 0
+			private_string_count = calloc(size_S, sizeof(int)); // Using calloc because we want to initialize every member to 0
 			// For each payload, we call the string matching algorithm for every string in S 
 			#pragma omp for collapse(2) 
-			for (int k = 0; k < count; k++)
+			for (int k = 0; k < packet_count; k++)
 				for (int i = 0; i < size_S; i++) 
-					private_string_count[i] += kmp_matcher(array_of_payloads[k],S[i]);
+					private_string_count[i] += kmp_matcher((char*)array_of_payloads[k],S[i]);
 			
 			#pragma omp critical
 			{
@@ -250,32 +205,29 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	
-	
-	/* Stop the performance evaluation */		
+	// Stop the performance evaluation	
 	double finish = omp_get_wtime();
 	
-	/* Now we print the output */
+	// Now we print the output 
 	printf("Printing the number of appereances of each string throughout the entire pcap file:\n");
 	for (int i = 0; i < size_S; i++)
 		printf("%s: %d times!\n", S[i], string_count[i]);
 		
-	/* Now we print performance evaluation */
+	// Now we print performance evaluation 
 	printf("Elapsed time = %f seconds\n", finish-start);
 
-	/* We have to free previously allocated memory */
-	for (int k = 0; k < count; k++) {
-		free(array_of_payloads[k]);
-	} free(array_of_payloads);
+	// We have to free previously allocated memory 
+	free(array_of_payloads);
 	
-	// we have to free array of packets
-	for (int k = 0; k < packet_count; k++) {
-		free(array_of_packets[k]);
-	} free(array_of_packets);
+	// We have to free array of packets
+	free(array_of_packets);
 	
+	// We have to free string count array
 	free(string_count);
-	return 0;
-}
+	
+	return 0;    
 
+}
 
 void problem_pkt(struct timeval ts, const char *reason) {
 	fprintf(stderr, "error: %s\n", reason);
@@ -376,9 +328,7 @@ const unsigned char* dump_TCP_packet(const unsigned char *packet) {
 	payload = (u_char *)(packet);
 	
 	return payload;
-
 }
-
 
 int kmp_matcher (char text[], char pattern[]) {
 	int text_len = strlen(text);
@@ -431,3 +381,4 @@ void kmp_prefix (char pattern[], int *prefix) {
 		}
 	}
 }
+
