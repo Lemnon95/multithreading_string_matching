@@ -15,7 +15,6 @@
 struct pktStruct {
     struct pcap_pkthdr pkt_header; // header object - *not* a pointer
     const unsigned char * pkt_data; // data object
-    long time; // used to compare with each other
 };
 
 /* UDP header struct */
@@ -146,41 +145,40 @@ int main(int argc, char *argv[]) {
 	while((i = pcap_next_ex(pcap,&header,&data)) >=0) {
 
 		myStruct.pkt_header = *header; //get header
-		data_copy = (u_char *)malloc(myStruct.pkt_header.caplen); //allocate memory to copy packet data
-		memcpy(data_copy, data, myStruct.pkt_header.caplen); //copy of data needed because the data pointer change after this loop
+		data_copy = (u_char *)malloc(myStruct.pkt_header.caplen*10); //allocate memory to copy packet data
+		memcpy(data_copy, data, myStruct.pkt_header.caplen*10); //copy of data needed because the data pointer change after this loop
 		myStruct.pkt_data = data_copy;
-		myStruct.time = header->ts.tv_sec * 1000000 + header->ts.tv_usec; //time is used to compare packets
+		
+		if(packet_count >= array_of_packets_length) {
+			//it looks like we exceeded maximum capacity of array, so we use a realloc to reallocate memory
+			array_of_packets = realloc(array_of_packets, (array_of_packets_length*2)*sizeof(struct pktStruct));
+			array_of_packets_length *= 2;
+		}
 		//push packet struct into array of packets
-		array_of_packets = realloc(array_of_packets, (array_of_packets_length)*sizeof(struct pktStruct));
 		array_of_packets[packet_count] = myStruct; //Store packet into array
-		//Counters update 
 		packet_count++;
-		array_of_packets_length++;
+
 	}
 	
-	const unsigned char * packet;
+
 	struct pcap_pkthdr packet_header;
-	
 	const unsigned char * array_of_payloads[packet_count];
 	
-	FILE *f = fopen("file.txt", "w");
+	#pragma omp parallel for num_threads(thread_count) shared(array_of_payloads, array_of_packets, packet_type) private(myStruct, data, packet_header)
 	for (int i=0; i<packet_count; i++) {
 		myStruct = array_of_packets[i]; // Get current packet
-		packet = myStruct.pkt_data; //Get data of current packet
+		data = myStruct.pkt_data; //Get data of current packet
 		packet_header = myStruct.pkt_header; //Get header of current packet
 		const unsigned char* payload;
 		if(packet_type == UDP) //udp
-			payload = dump_UDP_packet(packet, packet_header.ts, packet_header.caplen); // Getting the payload
+			payload = dump_UDP_packet(data, packet_header.ts, packet_header.caplen); // Getting the payload
 		else //tcp
-			payload = dump_TCP_packet(myStruct.pkt_data); // Getting the payload
+			payload = dump_TCP_packet(data); // Getting the payload
 			
-		if(payload != NULL) {// Save payload into array of payload
+		if(payload != NULL) // Save payload into array of payload
 			array_of_payloads[i] = payload;
-			//Todo strcpy payload
-			fprintf(f, "Payload %d:\n %s\n", i, payload);
-		}
+
 	}
-	fclose(f);
 	
 	char *S[] = {"http", "Linux", "HTTP", "LOCATION", "a", "b"}; //Strings we want to find
 	int size_S = 6;
