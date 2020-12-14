@@ -14,7 +14,7 @@
 // PCAP packet struct
 struct pktStruct {
     struct pcap_pkthdr pkt_header; // header object - *not* a pointer
-    const u_char * pkt_data; // data object
+    const unsigned char * pkt_data; // data object
     long time; // used to compare with each other
 };
 
@@ -136,8 +136,8 @@ int main(int argc, char *argv[]) {
 	}
 	
 	struct pcap_pkthdr *header;
-	const u_char * data; // data object
-	u_char * data_copy; //copy of data object
+	const unsigned char * data; // data object
+	unsigned char * data_copy; //copy of data object
 	struct pktStruct *array_of_packets = malloc(sizeof(struct pktStruct)); //this array contains each pktStruct
 	int packet_count = 0; //number of packets into pcap file
 	int array_of_packets_length = 1; //array dimension
@@ -158,7 +158,7 @@ int main(int argc, char *argv[]) {
 		array_of_packets_length++;
 	}
 	
-	const u_char * packet;
+	const unsigned char * packet;
 	struct pcap_pkthdr packet_header;
 	
 	const unsigned char * array_of_payloads[packet_count];
@@ -176,6 +176,7 @@ int main(int argc, char *argv[]) {
 			
 		if(payload != NULL) {// Save payload into array of payload
 			array_of_payloads[i] = payload;
+			//Todo strcpy payload
 			fprintf(f, "Payload %d:\n %s\n", i, payload);
 		}
 	}
@@ -314,8 +315,6 @@ const unsigned char* dump_TCP_packet(const unsigned char *packet) {
 	u_int size_ip;
 	u_int size_tcp;
 
-
-	//ethernet = (struct sniff_ethernet*)(packet);
 	packet += SIZE_ETHERNET; //move packet pointer adding the ethernet size to get the ip pointer
 	
 	ip = (struct sniff_ip*)(packet); 
