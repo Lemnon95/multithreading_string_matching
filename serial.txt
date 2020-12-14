@@ -1,0 +1,103 @@
+Payload 0:
+ local
+Payload 1:
+ 8CF1002253airplay¿
+Payload 2:
+ T: 239.255.255.250:1900
+MAN: "ssdp:discover"
+MX: 3
+ST: urn:schemas-upnp-org:device:InternetGatewayDevice:1
+
+
+Payload 3:
+ T: 239.255.255.250:1900
+MAN: "ssdp:discover"
+MX: 3
+ST: urn:schemas-upnp-org:device:InternetGatewayDevice:1
+
+
+Payload 4:
+ T: 239.255.255.250:1900
+MAN: "ssdp:discover"
+MX: 3
+ST: urn:schemas-upnp-org:device:InternetGatewayDevice:1
+
+
+Payload 5:
+ 8CF100225355.250:1900
+MAN: "ssdp:discover"
+MX: 3
+ST: urn:schemas-upnp-org:device:InternetGatewayDevice:1
+
+
+Payload 6:
+ _tcplocal
+Payload 7:
+ googlerpc_tcplocal
+Payload 8:
+ _tcplocal
+Payload 9:
+ googlerpc_tcplocal
+Payload 10:
+ 8CF1002253cplocal
+Payload 11:
+ _tcplocal
+Payload 12:
+ 015-529d00207485f4b7255abf359f3c38ea_googlecast_tcplocal
+Payload 13:
+ _tcplocal
+Payload 14:
+ 015-529d00207485f4b7255abf359f3c38ea_googlecast_tcplocal
+Payload 15:
+  239.255.255.250:1900
+CACHE-CONTROL: max-age=1810
+LOCATION: http://192.168.1.254:9000/dev0/desc.xml
+NT: uuid:55076f6e-6b79-1d65-a4a5-1cb044cae17b
+NTS: ssdp:alive
+SERVER: Linux/2.x.x, UPnP/1.0, pvConnect UPnP SDK/1.0, Twonky UPnP SDK/1.1
+USN: uuid:55076f6e-6b79-1d65-a4a5-1cb044cae17b
+
+b7-255a-bf359f3c38ea¿¡,
+Payload 16:
+  239.255.255.250:1900
+CACHE-CONTROL: max-age=1810
+LOCATION: http://192.168.1.254:9000/dev0/desc.xml
+NT: upnp:rootdevice
+NTS: ssdp:alive
+SERVER: Linux/2.x.x, UPnP/1.0, pvConnect UPnP SDK/1.0, Twonky UPnP SDK/1.1
+USN: uuid:55076f6e-6b79-1d65-a4a5-1cb044cae17b::upnp:rootdevice
+
+ae17b
+
+b7-255a-bf359f3c38ea¿¡,
+Payload 17:
+  239.255.255.250:1900
+CACHE-CONTROL: max-age=1810
+LOCATION: http://192.168.1.254:9000/dev0/desc.xml
+NT: urn:schemas-upnp-org:device:MediaServer:1
+NTS: ssdp:alive
+SERVER: Linux/2.x.x, UPnP/1.0, pvConnect UPnP SDK/1.0, Twonky UPnP SDK/1.1
+USN: uuid:55076f6e-6b79-1d65-a4a5-1cb044cae17b::urn:schemas-upnp-org:device:MediaServer:1
+
+
+Payload 18:
+  239.255.255.250:1900
+CACHE-CONTROL: max-age=1810
+LOCATION: http://192.168.1.254:9000/dev0/desc.xml
+NT: urn:schemas-upnp-org:service:ConnectionManager:1
+NTS: ssdp:alive
+SERVER: Linux/2.x.x, UPnP/1.0, pvConnect UPnP SDK/1.0, Twonky UPnP SDK/1.1
+USN: uuid:55076f6e-6b79-1d65-a4a5-1cb044cae17b::urn:schemas-upnp-org:service:ConnectionManager:1
+
+
+Payload 19:
+  239.255.255.250:1900
+CACHE-CONTROL: max-age=1810
+LOCATION: http://192.168.1.254:9000/dev0/desc.xml
+NT: urn:schemas-upnp-org:service:ContentDirectory:1
+NTS: ssdp:alive
+SERVER: Linux/2.x.x, UPnP/1.0, pvConnect UPnP SDK/1.0, Twonky UPnP SDK/1.1
+USN: uuid:55076f6e-6b79-1d65-a4a5-1cb044cae17b::urn:schemas-upnp-org:service:ContentDirectory:1
+
+
+

@@ -102,7 +102,7 @@ void kmp_prefix (char pattern[], int *prefix);
 
 int main(int argc, char *argv[]) {
 	pcap_t *pcap;	//pointer to the pcap file
-	const unsigned char *packet;
+	//const unsigned char *packet;
 	char errbuf[PCAP_ERRBUF_SIZE];
 	//struct pcap_pkthdr header;
 	char *filepath;
@@ -160,17 +160,23 @@ int main(int argc, char *argv[]) {
 	
 	const unsigned char * array_of_payloads[packet_count];
 	
+	FILE *f = fopen("file.txt", "w");
 	for (int i=0; i<packet_count; i++) {
-		packet = array_of_packets[i].pkt_data; // Get data of current packet
+		myStruct = array_of_packets[i]; // Get data of current packet
+		data = myStruct.pkt_data;
+		header = &myStruct.pkt_header;
 		const unsigned char* payload;
 		if(packet_type == UDP) //udp
-			payload = dump_UDP_packet(packet, header->ts, header->caplen); // Getting the payload
+			payload = dump_UDP_packet(data, header->ts, header->caplen); // Getting the payload
 		else //tcp
-			payload = dump_TCP_packet(packet); // Getting the payload
+			payload = dump_TCP_packet(data); // Getting the payload
 			
-		if(payload != NULL) // Save payload into array of payload
+		if(payload != NULL) {// Save payload into array of payload
 			array_of_payloads[i] = payload;
+			fprintf(f, "Payload %d:\n %s\n", i, payload);
+		}
 	}
+	fclose(f);
 	
 	char *S[] = {"http", "Linux", "HTTP", "LOCATION", "a", "b"}; //Strings we want to find
 	int size_S = 6;
@@ -217,7 +223,7 @@ int main(int argc, char *argv[]) {
 	printf("Elapsed time = %f seconds\n", finish-start);
 
 	// We have to free previously allocated memory 
-	free(array_of_payloads);
+	//free(array_of_payloads);
 	
 	// We have to free array of packets
 	free(array_of_packets);

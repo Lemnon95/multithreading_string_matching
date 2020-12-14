@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
 	int size_S = 6;
 	int *string_count = calloc(size_S, sizeof(int)); //using calloc because we want to initialize every member to 0
 	
-	
+	FILE *f = fopen("serial.txt", "w");
 	/* Loop extracting packets as long as we have something to read, storing them inside array_of_payloads */
 	while ((packet = pcap_next(pcap, &header)) != NULL) {
 		const unsigned char* payload;
@@ -143,6 +143,7 @@ int main(int argc, char *argv[]) {
 			payload = dump_TCP_packet(packet); //getting the payload
 			
 		if(payload != NULL) { //we store it in array of payloads
+			fprintf(f, "Payload %d:\n %s\n", count, payload);
 			array_of_payloads[count] = malloc(strlen((char *)payload)*sizeof(char)); //we have to allocate memory for storing this payload
 			if (count < array_of_payloads_length) {
 				strcpy(array_of_payloads[count], (char *)payload);
@@ -159,6 +160,7 @@ int main(int argc, char *argv[]) {
 		else
 			printf("The packet reading has not been completed succesfully!\n");
 	}
+	fclose(f);
 	
 	/* If array is not full, we reallocate memory */
 	if (!(count == array_of_payloads_length))
