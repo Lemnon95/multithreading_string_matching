@@ -158,18 +158,21 @@ int main(int argc, char *argv[]) {
 		array_of_packets_length++;
 	}
 	
+	const u_char * packet;
+	struct pcap_pkthdr packet_header;
+	
 	const unsigned char * array_of_payloads[packet_count];
 	
 	FILE *f = fopen("file.txt", "w");
 	for (int i=0; i<packet_count; i++) {
-		myStruct = array_of_packets[i]; // Get data of current packet
-		data = myStruct.pkt_data;
-		header = &myStruct.pkt_header;
+		myStruct = array_of_packets[i]; // Get current packet
+		packet = myStruct.pkt_data; //Get data of current packet
+		packet_header = myStruct.pkt_header; //Get header of current packet
 		const unsigned char* payload;
 		if(packet_type == UDP) //udp
-			payload = dump_UDP_packet(data, header->ts, header->caplen); // Getting the payload
+			payload = dump_UDP_packet(packet, packet_header.ts, packet_header.caplen); // Getting the payload
 		else //tcp
-			payload = dump_TCP_packet(data); // Getting the payload
+			payload = dump_TCP_packet(myStruct.pkt_data); // Getting the payload
 			
 		if(payload != NULL) {// Save payload into array of payload
 			array_of_payloads[i] = payload;
