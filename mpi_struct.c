@@ -19,12 +19,10 @@ int main (int argc, char *argv[]) {
 	MPI_Datatype array_of_types[] = {MPI_CHAR};
 	MPI_Aint lb, extent;
 	
-	MPI_Type_create_struct(1, array_of_blocklengths, array_of_displacements, array_of_types, &tmp_type);
-	MPI_Type_get_extent(tmp_type, &lb, &extent);
-	MPI_Type_create_resized(tmp_type, lb, extent, &MPI_Payload);
+	MPI_Type_create_struct(1, array_of_blocklengths, array_of_displacements, array_of_types, &MPI_Payload);
 	MPI_Type_commit(&MPI_Payload);
 	
-	int n = 3; //total number of packets
+	int n = 6; //total number of packets
 	int local_n = n/comm_sz; //number of packets for single node
 	/* Now that we have the number of payloads/packets for each node, we can allocate memory for an array of payloads */
 	Payload *local_buff = malloc(local_n*sizeof(Payload));
@@ -37,14 +35,14 @@ int main (int argc, char *argv[]) {
 			scanf("%s", msg);
 			strcpy(a[i].data, msg);
 		}
-		MPI_Scatter(a, local_n, MPI_Payload, local_buff, local_n, MPI_Payload, 0, MPI_COMM_WORLD);
-		free(a);
 	}
-	else {
-		MPI_Scatter(a, local_n, MPI_Payload, local_buff, local_n, MPI_Payload, 0, MPI_COMM_WORLD);
-		printf("Hi from process %d, here's the string:\n", my_rank);
-		printf("%s\n", local_buff[0].data);
-	}
+	
+	MPI_Scatter(a, local_n, MPI_Payload, local_buff, local_n, MPI_Payload, 0, MPI_COMM_WORLD);
+	free(a);
+	
+	printf("Hi from process %d, here are the strings:\n", my_rank);
+	printf("%s\n", local_buff[0].data);
+	printf("%s\n", local_buff[1].data);
 	
 	
 	MPI_Type_free(&MPI_Payload);
