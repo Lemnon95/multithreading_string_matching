@@ -9,7 +9,7 @@
 
 // PCAP packet struct
 typedef struct {
-	char data[65535];
+	char data[6553];
 } Payload;
 
 /* UDP header struct */
@@ -91,7 +91,7 @@ int main (int argc, char *argv[]){
 	
 	/* Building MPI_Payload Datatype */
 	MPI_Datatype MPI_Payload;
-	int array_of_blocklengths[] = {65535};
+	int array_of_blocklengths[] = {6553};
 	MPI_Aint array_of_displacements[] = {0};
 	MPI_Datatype array_of_types[] = {MPI_CHAR};
 	MPI_Type_create_struct(1, array_of_blocklengths, array_of_displacements, array_of_types, &MPI_Payload);
@@ -159,6 +159,10 @@ int main (int argc, char *argv[]){
 	}
 	MPI_Scatterv(a, local_size, displ, MPI_Payload, local_buff, local_size[my_rank], MPI_Payload, 0, MPI_COMM_WORLD);
 	free(a);
+	
+	for (int i = 0; i < local_size[my_rank]; i++) {
+		printf("%s\n", local_buff[i].data);
+	}
 	
 	MPI_Type_free(&MPI_Payload);
 	MPI_Finalize();
