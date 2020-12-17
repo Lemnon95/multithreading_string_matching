@@ -143,10 +143,10 @@ int main(int argc, char *argv[]) {
 	struct pktStruct myStruct;  // struct used to read each packet into the while cicle
 	int i;
 	while((i = pcap_next_ex(pcap,&header,&data)) >=0) {
-
+	
 		myStruct.pkt_header = *header; //get header
-		data_copy = (u_char *)malloc(myStruct.pkt_header.caplen*10); //allocate memory to copy packet data
-		memcpy(data_copy, data, myStruct.pkt_header.caplen*10); //copy of data needed because the data pointer change after this loop
+		data_copy = (unsigned char *)malloc(myStruct.pkt_header.caplen*8); //allocate memory to copy packet data
+		memcpy(data_copy, data, myStruct.pkt_header.caplen*8); //copy of data needed because the data pointer change after this loop
 		myStruct.pkt_data = data_copy;
 		
 		if(packet_count >= array_of_packets_length) {
@@ -159,25 +159,27 @@ int main(int argc, char *argv[]) {
 		packet_count++;
 
 	}
-	
 
 	struct pcap_pkthdr packet_header;
-	const unsigned char * array_of_payloads[packet_count];
+	unsigned char * array_of_payloads[packet_count];
 	
 	#pragma omp parallel for num_threads(thread_count) shared(array_of_payloads, array_of_packets, packet_type) private(myStruct, data, packet_header)
 	for (int i=0; i<packet_count; i++) {
 		myStruct = array_of_packets[i]; // Get current packet
 		data = myStruct.pkt_data; //Get data of current packet
 		packet_header = myStruct.pkt_header; //Get header of current packet
+		
 		const unsigned char* payload;
 		if(packet_type == UDP) //udp
 			payload = dump_UDP_packet(data, packet_header.ts, packet_header.caplen); // Getting the payload
 		else //tcp
 			payload = dump_TCP_packet(data); // Getting the payload
 			
-		if(payload != NULL) // Save payload into array of payload
-			array_of_payloads[i] = payload;
-
+		if(payload != NULL) {  // Save payload into array of payload
+			array_of_payloads[i] = (unsigned char*)malloc(strlen((char*)payload)+1);
+			memcpy(array_of_payloads[i], payload, strlen((char*)payload));
+		}
+			
 	}
 	
 	char *S[] = {"http", "Linux", "HTTP", "LOCATION", "a", "b"}; //Strings we want to find
@@ -225,7 +227,8 @@ int main(int argc, char *argv[]) {
 	printf("Elapsed time = %f seconds\n", finish-start);
 
 	// We have to free previously allocated memory 
-	//free(array_of_payloads);
+	for(int i=0; i<packet_count; i++)
+		free(array_of_payloads[i]);
 	
 	// We have to free array of packets
 	free(array_of_packets);
