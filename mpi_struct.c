@@ -37,14 +37,11 @@ int main (int argc, char *argv[]) {
 			scanf("%s", msg);
 			strcpy(a[i].data, msg);
 		}
-		MPI_Send(&a[1], 1, MPI_Payload, 1, 0, MPI_COMM_WORLD);
-		MPI_Send(&a[2], 1, MPI_Payload, 2, 0, MPI_COMM_WORLD);
-		//MPI_Scatter(a, n, MPI_Payload, local_buff, local_n, MPI_Payload, 0, MPI_COMM_WORLD);
+		MPI_Scatter(a, local_n, MPI_Payload, local_buff, local_n, MPI_Payload, 0, MPI_COMM_WORLD);
 		free(a);
 	}
 	else {
-		MPI_Recv(&local_buff[0], 1, MPI_Payload, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		//MPI_Scatter(a, n, MPI_Payload, local_buff, local_n, MPI_Payload, 0, MPI_COMM_WORLD);
+		MPI_Scatter(a, local_n, MPI_Payload, local_buff, local_n, MPI_Payload, 0, MPI_COMM_WORLD);
 		printf("Hi from process %d, here's the string:\n", my_rank);
 		printf("%s\n", local_buff[0].data);
 	}
