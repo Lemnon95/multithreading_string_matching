@@ -13,11 +13,10 @@ int main (int argc, char *argv[]) {
 	MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
 	
-	MPI_Datatype MPI_Payload, tmp_type;
+	MPI_Datatype MPI_Payload;
 	int array_of_blocklengths[] = {10};
 	MPI_Aint array_of_displacements[] = {0};
 	MPI_Datatype array_of_types[] = {MPI_CHAR};
-	MPI_Aint lb, extent;
 	
 	MPI_Type_create_struct(1, array_of_blocklengths, array_of_displacements, array_of_types, &MPI_Payload);
 	MPI_Type_commit(&MPI_Payload);
