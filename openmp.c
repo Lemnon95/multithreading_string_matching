@@ -145,8 +145,8 @@ int main(int argc, char *argv[]) {
 	while((i = pcap_next_ex(pcap,&header,&data)) >=0) {
 	
 		myStruct.pkt_header = *header; //get header
-		data_copy = (unsigned char *)malloc(myStruct.pkt_header.caplen*8); //allocate memory to copy packet data
-		memcpy(data_copy, data, myStruct.pkt_header.caplen*8); //copy of data needed because the data pointer change after this loop
+		data_copy = malloc(myStruct.pkt_header.caplen*10); //allocate memory to copy packet data
+		memcpy(data_copy, data, myStruct.pkt_header.caplen*7); //copy of data needed because the data pointer change after this loop
 		myStruct.pkt_data = data_copy;
 		
 		if(packet_count >= array_of_packets_length) {
@@ -176,7 +176,7 @@ int main(int argc, char *argv[]) {
 			payload = dump_TCP_packet(data); // Getting the payload
 			
 		if(payload != NULL) {  // Save payload into array of payload
-			array_of_payloads[i] = (unsigned char*)malloc(strlen((char*)payload)+1);
+			array_of_payloads[i] = malloc(strlen((char*)payload)+1);
 			memcpy(array_of_payloads[i], payload, strlen((char*)payload));
 		}
 			
