@@ -78,8 +78,6 @@ void too_short(struct timeval ts, const char *truncated_hdr);
 int kmp_matcher (char text[], char pattern[]);
 void kmp_prefix (char pattern[], int *prefix); 
 
-void Get_Size(int *n, char filename[], int my_rank, int* flag, int packet_type);
-
 int main (int argc, char *argv[]){
 	int my_rank, comm_sz;
 	MPI_Init(NULL, NULL);
@@ -107,14 +105,52 @@ int main (int argc, char *argv[]){
 	}
 	
 	int total_size, flag = 0;
-	Get_Size(&total_size, argv[1], my_rank, &flag, packet_type);
-	//we check for error in pcap file opening
-	if (flag == -1) {
+	char *global_buff = NULL;
+
+	if (my_rank == 0) {
+		char errbuff[PCAP_ERRBUF_SIZE];
+		struct pcap_pkthdr header;
+		pcap_t *pcap = pcap_open_offline(argv[1], errbuff);
+		if (pcap == NULL) {	//check error in pcap file opening
+			fprintf(stderr, "error reading pcap file: %s\n", errbuff);
+			flag = -1;
+		}
+		else {
+			const unsigned char *packet;
+			int count = 0;
+			int i = 0;
+			while ((packet = pcap_next(pcap, &header)) != NULL) {
+				const unsigned char* payload;
+				if(packet_type == UDP) 
+					payload = dump_UDP_packet(packet, header.ts, header.caplen); // Getting the payload
+				else //tcp
+					payload = dump_TCP_packet(packet); // Getting the payload
+				int size = strlen((char*) payload)+1;	
+				if(i == 0) {
+					global_buff = calloc(size, sizeof(char));
+				}
+				else	{
+					global_buff = realloc(global_buff, (count+size)*sizeof(char));
+				}
+				strcat(global_buff, (char *) payload);	
+				count += size;
+				i++;
+			}
+			total_size = count;
+			pcap_close(pcap);
+		}
+	}
+	MPI_Bcast(&total_size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+	MPI_Bcast(&flag, 1, MPI_INT, 0, MPI_COMM_WORLD);
+	
+	if(flag == -1) {
+		free(global_buff);
 		MPI_Finalize();
 		return 0;
 	}
 	
 	/* At this point, we have the total size, so we can allocate local arrays */
+	
 	int *local_size = malloc(comm_sz*sizeof(int)); //array that stores the number of lines that each process must have
 	int *displ = malloc(comm_sz*sizeof(int)); //array of displacement for Scatterv 
 	
@@ -133,24 +169,8 @@ int main (int argc, char *argv[]){
 	int *global_string_count = calloc(size_S, sizeof(int)); 
 	
 	char *local_buff = malloc(local_size[my_rank]*sizeof(char));
-	char *a = NULL;
-	if (my_rank == 0){ //rank 0 is in charge of gathering all payloads
-		a = calloc(total_size, sizeof(char));
-		char errbuff[PCAP_ERRBUF_SIZE];
-		struct pcap_pkthdr header;
-		pcap_t *pcap = pcap_open_offline(argv[1], errbuff);
-		const unsigned char *packet;
-		while ((packet = pcap_next(pcap, &header)) != NULL) {
-			const unsigned char* payload;
-			if(packet_type == UDP) 
-				payload = dump_UDP_packet(packet, header.ts, header.caplen); // Getting the payload
-			else //tcp
-				payload = dump_TCP_packet(packet); // Getting the payload
-			strcat(a, (char *) payload); //we store the payload in the array of payloads
-		}
-	}
-	MPI_Scatterv(a, local_size, displ, MPI_CHAR, local_buff, local_size[my_rank], MPI_CHAR, 0, MPI_COMM_WORLD);
-	free(a);
+	
+	MPI_Scatterv(global_buff, local_size, displ, MPI_CHAR, local_buff, local_size[my_rank], MPI_CHAR, 0, MPI_COMM_WORLD);
 	
 	for (int i = 0; i < size_S; i++) 
 				local_string_count[i] += kmp_matcher(local_buff,S[i]);
@@ -163,37 +183,14 @@ int main (int argc, char *argv[]){
 			printf("%s: %d times!\n", S[i], global_string_count[i]);
 	}
 	
+	free(local_buff);
+	free(global_buff);
+	free(local_string_count);
+	free(global_string_count);
 	MPI_Finalize();
 	return 0;
 }
 
-void Get_Size(int *n, char file_name[], int my_rank, int* flag, int packet_type) {
-	if (my_rank == 0) {
-		char errbuff[PCAP_ERRBUF_SIZE];
-		struct pcap_pkthdr header;
-		pcap_t *pcap = pcap_open_offline(file_name, errbuff);
-		if (pcap == NULL) {	//check error in pcap file opening
-			fprintf(stderr, "error reading pcap file: %s\n", errbuff);
-			*flag = -1;
-		}
-		else {
-			const unsigned char *packet;
-			int count = 0;
-			while ((packet = pcap_next(pcap, &header)) != NULL) {
-				const unsigned char* payload;
-				if(packet_type == UDP) 
-					payload = dump_UDP_packet(packet, header.ts, header.caplen); // Getting the payload
-				else //tcp
-					payload = dump_TCP_packet(packet); // Getting the payload			
-				count += strlen((char*) payload);
-			}
-			*n = count;
-			pcap_close(pcap);
-		}
-	}
-	MPI_Bcast(n, 1, MPI_INT, 0, MPI_COMM_WORLD);
-	MPI_Bcast(flag, 1, MPI_INT, 0, MPI_COMM_WORLD);
-}
 
 void problem_pkt(struct timeval ts, const char *reason) {
 	fprintf(stderr, "error: %s\n", reason);
