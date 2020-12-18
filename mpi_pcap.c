@@ -9,7 +9,7 @@
 
 // PCAP packet struct
 typedef struct {
-	char data[6553];
+	char data[10913];
 } Payload;
 
 /* UDP header struct */
@@ -82,6 +82,9 @@ void problem_pkt(struct timeval ts, const char *reason);
 void too_short(struct timeval ts, const char *truncated_hdr);
 
 void Get_Size(int *n, char filename[], int my_rank, int* flag);
+/*Knuth-Morris-Pratt String Matching Algorithm's functions.*/
+int kmp_matcher (char text[], char pattern[]);
+void kmp_prefix (char pattern[], int *prefix); 
 
 int main (int argc, char *argv[]){
 	int my_rank, comm_sz;
@@ -90,11 +93,14 @@ int main (int argc, char *argv[]){
 	MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
 	
 	/* Building MPI_Payload Datatype */
-	MPI_Datatype MPI_Payload;
-	int array_of_blocklengths[] = {6553};
+	MPI_Datatype MPI_Payload, tmp;
+	int array_of_blocklengths[] = {10913};
 	MPI_Aint array_of_displacements[] = {0};
 	MPI_Datatype array_of_types[] = {MPI_CHAR};
-	MPI_Type_create_struct(1, array_of_blocklengths, array_of_displacements, array_of_types, &MPI_Payload);
+	MPI_Aint lb, extent;
+	MPI_Type_create_struct(1, array_of_blocklengths, array_of_displacements, array_of_types, &tmp);
+	MPI_Type_get_extent(tmp, &lb, &extent);
+	MPI_Type_create_resized(tmp, lb, extent, &MPI_Payload);
 	MPI_Type_commit(&MPI_Payload);
 	
 	/* Getting packet type from input */
@@ -126,7 +132,8 @@ int main (int argc, char *argv[]){
 	
 	/* At this point, we have the total size, so we can allocate local arrays */
 	int *local_size = malloc(comm_sz*sizeof(int)); //array that stores the number of packets that each process must have
-	int *displ = malloc(comm_sz*sizeof(int)); //array of displacement for Scatterv 
+	int *displ = malloc(comm_sz*sizeof(int)); //array of displacement for Scatterv
+	
 	
 	for (int i = 0; i < comm_sz; i++) {
 		local_size[i] = num_payloads/comm_sz;
@@ -137,6 +144,11 @@ int main (int argc, char *argv[]){
 		displ[i] = offset;
 		offset += local_size[i];
 	}
+	
+	char *S[] = {"http", "Linux", "HTTP", "LOCATION", "a", "b"}; //Strings we want to find
+	int size_S = 6;
+	int *local_string_count = calloc(size_S, sizeof(int)); 
+	int *global_string_count = calloc(size_S, sizeof(int)); 
 	
 	Payload *local_buff = malloc(local_size[my_rank]*sizeof(Payload));
 	Payload *a = NULL;
@@ -156,12 +168,24 @@ int main (int argc, char *argv[]){
 			strcpy(a[i].data, (char *) payload); //we store the payload in the array of payloads
 			i++;
 		}
+		pcap_close(pcap);
 	}
+	
 	MPI_Scatterv(a, local_size, displ, MPI_Payload, local_buff, local_size[my_rank], MPI_Payload, 0, MPI_COMM_WORLD);
 	free(a);
 	
-	for (int i = 0; i < local_size[my_rank]; i++) {
-		printf("%s\n", local_buff[i].data);
+	/* For each payload, we call the string matching algorithm for every string in S */
+	for (int k = 0; k < local_size[my_rank]; k++)
+		for (int i = 0; i < size_S; i++) 
+				local_string_count[i] += kmp_matcher(local_buff[k].data,S[i]);
+	
+	
+	MPI_Reduce(local_string_count, global_string_count, size_S, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+	
+	if (my_rank == 0) {
+		printf("Printing the number of appereances of each string throughout the entire pcap file:\n");
+		for (int i = 0; i < size_S; i++)
+			printf("%s: %d times!\n", S[i], global_string_count[i]);
 	}
 	
 	MPI_Type_free(&MPI_Payload);
@@ -294,6 +318,57 @@ const unsigned char* dump_TCP_packet(const unsigned char *packet) {
 
 }
 
+int kmp_matcher (char text[], char pattern[]) {
+	int text_len = strlen(text);
+	int pattern_len = strlen(pattern);
+	if (text_len < pattern_len) //no point trying to match things
+		return 0;
+	int *prefix_array = malloc(pattern_len*sizeof(int));
+	kmp_prefix(pattern, prefix_array);
+	int i = 0; 
+	int j = 0;
+	int occurrences = 0; //counter for the number of occurrences of pattern in text
+	while (i < text_len) {
+		if (pattern[j] == text[i]) {
+			j++;
+			i++;
+		}
+		if (j == pattern_len) { //we have a match
+			occurrences++;
+			j = prefix_array[j-1]; //look for next match
+		}
+		else if (i < text_len && pattern[j] != text[i]) {
+			if (j != 0)
+				j = prefix_array[j-1];
+			else
+				i++;
+		}
+	}
+	
+	free(prefix_array);
+	return occurrences;
+}
+
+void kmp_prefix (char pattern[], int *prefix) {
+	int pattern_len = strlen(pattern);
+	int j = 0;
+	prefix[0] = 0; //first letter does not have any prefix
+	int i = 1;
+	while (i < pattern_len) {
+		if (pattern[i] == pattern[j]){
+			prefix[i] = j + 1;
+			j++;
+			i++;
+		}
+		else if (j != 0) {
+			j = prefix[j-1];
+		}
+		else {
+			prefix[i] = 0;
+			i++;
+		}
+	}
+}
 	
 	
 	
