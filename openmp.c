@@ -80,6 +80,7 @@ struct sniff_tcp {
 
 #define UDP 0
 #define TCP 1
+#define ERROR_STR "error404"
 
 /* Reports a problem with dumping the packet with the given timestamp. */
 void problem_pkt(struct timeval ts, const char *reason);
@@ -142,13 +143,13 @@ int main(int argc, char *argv[]) {
 	int array_of_packets_length = 1; //array dimension
 	struct pktStruct myStruct;  // struct used to read each packet into the while cicle
 	int i;
+	
 	while((i = pcap_next_ex(pcap,&header,&data)) >=0) {
 	
 		myStruct.pkt_header = *header; //get header
 		data_copy = malloc(myStruct.pkt_header.caplen*10); //allocate memory to copy packet data
-		memcpy(data_copy, data, myStruct.pkt_header.caplen*7); //copy of data needed because the data pointer change after this loop
+		memcpy(data_copy, data, myStruct.pkt_header.caplen*10); //copy of data needed because the data pointer change after this loop
 		myStruct.pkt_data = data_copy;
-		
 		if(packet_count >= array_of_packets_length) {
 			//it looks like we exceeded maximum capacity of array, so we use a realloc to reallocate memory
 			array_of_packets = realloc(array_of_packets, (array_of_packets_length*2)*sizeof(struct pktStruct));
@@ -168,7 +169,6 @@ int main(int argc, char *argv[]) {
 		myStruct = array_of_packets[i]; // Get current packet
 		data = myStruct.pkt_data; //Get data of current packet
 		packet_header = myStruct.pkt_header; //Get header of current packet
-		
 		const unsigned char* payload;
 		if(packet_type == UDP) //udp
 			payload = dump_UDP_packet(data, packet_header.ts, packet_header.caplen); // Getting the payload
@@ -178,6 +178,10 @@ int main(int argc, char *argv[]) {
 		if(payload != NULL) {  // Save payload into array of payload
 			array_of_payloads[i] = malloc(strlen((char*)payload)+1);
 			memcpy(array_of_payloads[i], payload, strlen((char*)payload));
+		}
+		else { // If the packet is not valid we save an error message into array of payloads
+			array_of_payloads[i] = malloc(strlen(ERROR_STR)+1);
+			memcpy(array_of_payloads[i], ERROR_STR, strlen(ERROR_STR));
 		}
 			
 	}
@@ -189,30 +193,24 @@ int main(int argc, char *argv[]) {
 	/* Start the performance evaluation */
 	double start = omp_get_wtime();
 	
-	if ( thread_count < packet_count ) { // Critical section not need
-		#pragma omp parallel for collapse(2) num_threads(thread_count) shared(string_count)
-		for (int k = 0; k < packet_count; k++)
-			for (int i = 0; i < size_S; i++) 
-				string_count[i] += kmp_matcher((char *)array_of_payloads[k],S[i]);
-	}
-	else { // Critical section need
-		int *private_string_count;
-		#pragma omp parallel num_threads(thread_count) private (private_string_count) shared(string_count)
-		{
-			private_string_count = calloc(size_S, sizeof(int)); // Using calloc because we want to initialize every member to 0
-			// For each payload, we call the string matching algorithm for every string in S 
-			#pragma omp for collapse(2) 
-			for (int k = 0; k < packet_count; k++)
-				for (int i = 0; i < size_S; i++) 
+	int *private_string_count;
+	#pragma omp parallel num_threads(thread_count) private (private_string_count) shared(string_count)
+	{
+		private_string_count = calloc(size_S, sizeof(int)); // Using calloc because we want to initialize every member to 0
+		// For each payload, we call the string matching algorithm for every string in S 
+		#pragma omp for collapse(2) 
+		for (int k = 0; k < packet_count; k++) //for every payload
+			for (int i = 0; i < size_S; i++) //for every string
+				if(strcmp((const char*)array_of_payloads[k],ERROR_STR)!=0) //if the payload is valid
 					private_string_count[i] += kmp_matcher((char*)array_of_payloads[k],S[i]);
-			
-			#pragma omp critical
-			{
-			for (int i = 0; i < size_S; i++)
-				string_count[i]+=private_string_count[i];
-			}
-			free(private_string_count);
+		
+		// Merge private string count into shared string count array
+		#pragma omp critical
+		{
+		for (int i = 0; i < size_S; i++)
+			string_count[i]+=private_string_count[i];
 		}
+		free(private_string_count);
 	}
 	
 	// Stop the performance evaluation	
