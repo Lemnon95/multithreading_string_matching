@@ -164,7 +164,10 @@ int main(int argc, char *argv[]) {
 	struct pcap_pkthdr packet_header;
 	unsigned char * array_of_payloads[packet_count];
 	
-	#pragma omp parallel for num_threads(thread_count) shared(array_of_payloads, array_of_packets, packet_type) private(myStruct, data, packet_header)
+	int chunk_size = (packet_count/thread_count)/50;
+	printf("chunk size = %d\n", chunk_size);
+	
+	#pragma omp parallel for num_threads(thread_count) schedule(guided) shared(array_of_payloads, array_of_packets, packet_type) private(myStruct, data, packet_header)
 	for (int i=0; i<packet_count; i++) {
 		myStruct = array_of_packets[i]; // Get current packet
 		data = myStruct.pkt_data; //Get data of current packet
@@ -198,7 +201,7 @@ int main(int argc, char *argv[]) {
 	{
 		private_string_count = calloc(size_S, sizeof(int)); // Using calloc because we want to initialize every member to 0
 		// For each payload, we call the string matching algorithm for every string in S 
-		#pragma omp for collapse(2) 
+		#pragma omp for schedule(guided) collapse(2) 
 		for (int k = 0; k < packet_count; k++) //for every payload
 			for (int i = 0; i < size_S; i++) //for every string
 				if(strcmp((const char*)array_of_payloads[k],ERROR_STR)!=0) //if the payload is valid
@@ -217,10 +220,11 @@ int main(int argc, char *argv[]) {
 	double finish = omp_get_wtime();
 	
 	// Now we print the output 
+	/*
 	printf("Printing the number of appereances of each string throughout the entire pcap file:\n");
 	for (int i = 0; i < size_S; i++)
 		printf("%s: %d times!\n", S[i], string_count[i]);
-		
+		*/
 	// Now we print performance evaluation 
 	printf("Elapsed time = %f seconds\n", finish-start);
 
@@ -239,7 +243,7 @@ int main(int argc, char *argv[]) {
 }
 
 void problem_pkt(struct timeval ts, const char *reason) {
-	fprintf(stderr, "error: %s\n", reason);
+	//fprintf(stderr, "error: %s\n", reason);
 
 }
 
