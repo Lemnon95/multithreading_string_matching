@@ -1,5 +1,5 @@
-/* 	Compilation: gcc -g -Wall -fopenmp openmp.c -o openmp -lpcap
-	Usage: ./openmp <file.pcap> thread_number [tcp/udp]
+/* 	Compilation: gcc -g -Wall -fopenmp openmp_data.c -o openmp_data -lpcap
+	Usage: ./openmp_data <file.pcap> thread_number [tcp/udp]
  */
 
 #include <stdio.h>
@@ -220,11 +220,11 @@ int main(int argc, char *argv[]) {
 	double finish = omp_get_wtime();
 	
 	// Now we print the output 
-	/*
+	
 	printf("Printing the number of appereances of each string throughout the entire pcap file:\n");
 	for (int i = 0; i < size_S; i++)
 		printf("%s: %d times!\n", S[i], string_count[i]);
-		*/
+		
 	// Now we print performance evaluation 
 	printf("Elapsed time = %f seconds\n", finish-start);
 
