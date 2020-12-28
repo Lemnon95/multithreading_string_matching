@@ -213,54 +213,8 @@ void too_short(struct timeval ts, const char *truncated_hdr) {
 }
 
 const unsigned char* dump_UDP_packet(const unsigned char *packet, struct timeval ts, unsigned int capture_len) {
-	struct ip *ip; //from netinet/ip.h
-	//struct UDP_hdr *udp_header;
-	unsigned int IP_header_length;
-
-	/* For simplicity, this program assumes Ethernet encapsulation. */
-
-	if (capture_len < sizeof(struct ether_header)) { //if the capture_len is too short
-		too_short(ts, "Ethernet header");
-		return NULL;
-	}
-
-	packet += sizeof(struct ether_header); // Move the packet pointer after the ether_header
 	
-	capture_len -= sizeof(struct ether_header); // Decrease the capture len yet to be read
-
-	if (capture_len < sizeof(struct ip)) {  //if the capture len is too short to contain the ip
-		
-		too_short(ts, "IP header");
-		return NULL;
-	}
-
-	ip = (struct ip*) packet;
-	IP_header_length = ip->ip_hl * 4;	// ip_hl is in 4-byte words
-
-	if (capture_len < IP_header_length) {
-		too_short(ts, "IP header with options");
-		return NULL;
-	}
-
-	// now we can check if it's a udp packet
-	if (ip->ip_p != IPPROTO_UDP) {
-		//problem_pkt(ts, "non-UDP packet");
-		return NULL;
-	}
-
-	
-	packet += IP_header_length; //Move the packet pointer after the ip header
-	
-	capture_len -= IP_header_length; //Decrease the capture len yet to be read
-
-	if (capture_len < sizeof(struct UDP_hdr)) {
-		too_short(ts, "UDP header");
-		return NULL;
-	}
-
-	/*	According to the UDP standard the header is 32 bit lenght
-	*	Adding 32 bit to the packet we have a pointer to the payload */
-	const unsigned char* payload = packet + 32;
+	const unsigned char* payload = packet + 42;
 	
 	//printf("payload= \n%s\n", payload);
 	

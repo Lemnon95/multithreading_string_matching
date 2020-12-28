@@ -189,8 +189,8 @@ int main(int argc, char *argv[]) {
 			
 	}
 	
-	char *S[] = {"http", "Linux", "HTTP", "LOCATION", "a", "b"}; //Strings we want to find
-	int size_S = 6;
+	char *S[] = {"http", "Linux", "NOTIFY", "LOCATION"}; //Strings we want to find
+	int size_S = 4;
 	int *string_count = calloc(size_S, sizeof(int)); // Using calloc because we want to initialize every member to 0
 	
 	/* Start the performance evaluation */
