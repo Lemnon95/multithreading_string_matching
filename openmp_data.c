@@ -11,10 +11,6 @@
 #include "timer.h"
 #include <omp.h>
 
-// PCAP packet struct
-struct pktStruct {
-    const unsigned char * pkt_data; // data object
-};
 
 /* UDP header struct */
 struct UDP_hdr {
@@ -136,40 +132,36 @@ int main(int argc, char *argv[]) {
 	
 	struct pcap_pkthdr *header;
 	const unsigned char * data; // data object
-	unsigned char * data_copy; //copy of data object
-	struct pktStruct *array_of_packets = malloc(sizeof(struct pktStruct)); //this array contains each pktStruct
+	unsigned char **array_of_packets = malloc(sizeof(unsigned char*)); 
 	int packet_count = 0; //number of packets into pcap file
-	int array_of_packets_length = 1; //array dimension
-	struct pktStruct myStruct;  // struct used to read each packet into the while cicle
+	int array_of_packets_length = 1; //array size
 	int i;
 	
 	while((i = pcap_next_ex(pcap,&header,&data)) >=0) {
-	
-		data_copy = malloc(header->len); //allocate memory to copy packet data
-		memcpy(data_copy, data, header->len); //copy of data needed because the data pointer change after this loop
-		myStruct.pkt_data = data_copy;
-		if(packet_count >= array_of_packets_length) {
+		if(packet_count == array_of_packets_length) {
 			//it looks like we exceeded maximum capacity of array, so we use a realloc to reallocate memory
-			array_of_packets = realloc(array_of_packets, (array_of_packets_length*2)*sizeof(struct pktStruct));
+			array_of_packets = realloc(array_of_packets, (array_of_packets_length*2)*sizeof(unsigned char*));
 			array_of_packets_length *= 2;
 		}
 		//push packet struct into array of packets
-		array_of_packets[packet_count] = myStruct; //Store packet into array
+		array_of_packets[packet_count] = malloc(header->len); //allocate memory to copy packet data
+		memcpy(array_of_packets[packet_count], data, header->len); 
 		packet_count++;
 
 	}
-
-	unsigned char * array_of_payloads[packet_count];
+	if (!(packet_count == array_of_packets_length))
+		array_of_packets = realloc (array_of_packets, packet_count*sizeof(unsigned char*)); //we reallocate memory to get even
+		
+	unsigned char *array_of_payloads[packet_count];
 	
 	int chunk_size = (packet_count/thread_count)/50;
 	printf("chunk size = %d\n", chunk_size);
 	/* Start the performance evaluation */
 	
 	double start = omp_get_wtime();
-	#pragma omp parallel for num_threads(thread_count) schedule(guided) shared(array_of_payloads, array_of_packets, packet_type) private(myStruct, data)
-	for (int i=0; i<packet_count; i++) {
-		myStruct = array_of_packets[i]; // Get current packet
-		data = myStruct.pkt_data; //Get data of current packet
+	#pragma omp parallel for num_threads(thread_count) schedule(guided) shared(array_of_payloads, array_of_packets, packet_type) private(data)
+	for (int i = 0; i < packet_count; i++) {
+		data = array_of_packets[i]; // Get current packet
 		const unsigned char* payload;
 		if(packet_type == UDP) //udp
 			payload = dump_UDP_packet(data); // Getting the payload
