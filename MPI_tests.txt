@@ -4,21 +4,22 @@ udp.pcap:
 
 	http: 5 times!
 	Linux: 5 times!
-	NOTIFY: 0 times!
+	NOTIFY: 5 times!
 	LOCATION: 5 times!
 	
 udp_1000.pcap:
 
-	http: 212 times!
-	Linux: 104 times!
-	NOTIFY: 0 times!
-	LOCATION: 122 times!
+	http: 328 times!
+	Linux: 204 times!
+	NOTIFY: 256 times!
+	LOCATION: 217 times!
+
 
 big_udp.pcap:
 
 	http: 943 times!
 	Linux: 438 times!
-	NOTIFY: 0 times!
+	NOTIFY: 704 times!
 	LOCATION: 534 times!
 
 }
@@ -30,23 +31,22 @@ udp.pcap:
 
 	http: 5 times!
 	Linux: 5 times!
-	NOTIFY: 0 times!
+	NOTIFY: 5 times!
 	LOCATION: 5 times!
-	
+
 udp_1000.pcap:
 
-	http: 212 times!
-	Linux: 104 times!
-	NOTIFY: 0 times!
-	LOCATION: 122 times!
+	http: 328 times!
+	Linux: 204 times!
+	NOTIFY: 256 times!
+	LOCATION: 217 times!
 
 
-	
 big_udp.pcap:
 
 	http: 943 times!
 	Linux: 438 times!
-	NOTIFY: 0 times!
+	NOTIFY: 704 times!
 	LOCATION: 534 times!
 	
 
@@ -63,12 +63,13 @@ udp.pcap:
 	NOTIFY: 5 times!
 	LOCATION: 5 times!
 
-udp_100.pcap:
+udp_1000.pcap:
 
 	http: 328 times!
 	Linux: 204 times!
 	NOTIFY: 256 times!
 	LOCATION: 217 times!
+
 
 big_udp.pcap:
 
