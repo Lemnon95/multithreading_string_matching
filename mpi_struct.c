@@ -174,8 +174,8 @@ int main (int argc, char *argv[]){
 		offset += local_size[i];
 	}
 	
-	char *S[] = {"http", "Linux", "HTTP", "LOCATION", "a", "b"}; //Strings we want to find
-	int size_S = 6;
+	char *S[] = {"http", "Linux", "NOTIFY", "LOCATION"}; //Strings we want to find
+	int size_S = 4;
 	int *local_string_count = calloc(size_S, sizeof(int)); 
 	int *global_string_count = calloc(size_S, sizeof(int)); 
 	
@@ -244,7 +244,7 @@ const unsigned char* dump_UDP_packet(const unsigned char *packet, struct timeval
 
 	// now we can check if it's a udp packet
 	if (ip->ip_p != IPPROTO_UDP) {
-		problem_pkt(ts, "non-UDP packet");
+		//problem_pkt(ts, "non-UDP packet");
 		return NULL;
 	}
 
