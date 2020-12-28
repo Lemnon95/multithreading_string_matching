@@ -129,8 +129,8 @@ int main(int argc, char *argv[]) {
 	int count = 0; //actual number of payloads
 	char **array_of_payloads = malloc(sizeof(char *));
 	int array_of_payloads_length = 1; //keeps track of the size of the array of payloads
-	char *S[] = {"http", "Linux", "HTTP", "LOCATION", "a", "b"}; //Strings we want to find
-	int size_S = 6;
+	char *S[] = {"http", "Linux", "NOTIFY", "LOCATION"}; //Strings we want to find
+	int size_S = 4;
 	int *string_count = calloc(size_S, sizeof(int)); //using calloc because we want to initialize every member to 0
 	
 	/* Loop extracting packets as long as we have something to read, storing them inside array_of_payloads */

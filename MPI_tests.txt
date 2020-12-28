@@ -52,3 +52,28 @@ big_udp.pcap:
 
 
 }
+
+
+serial {
+
+udp.pcap:
+
+	http: 5 times!
+	Linux: 5 times!
+	NOTIFY: 5 times!
+	LOCATION: 5 times!
+
+udp_100.pcap:
+
+	http: 328 times!
+	Linux: 204 times!
+	NOTIFY: 256 times!
+	LOCATION: 217 times!
+
+big_udp.pcap:
+
+	http: 943 times!
+	Linux: 438 times!
+	NOTIFY: 704 times!
+	LOCATION: 534 times!
+}
