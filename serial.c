@@ -10,6 +10,13 @@
 #include <netinet/if_ether.h>
 #include "timer.h"
 
+
+// PCAP packet struct
+struct pktStruct {
+    struct pcap_pkthdr pkt_header; // header object - *not* a pointer
+    const unsigned char * pkt_data; // data object
+};
+
 /* UDP header struct */
 struct UDP_hdr {
 	u_short	uh_sport;		/* source port */
@@ -96,7 +103,7 @@ int main(int argc, char *argv[]) {
 	pcap_t *pcap;	//pointer to the pcap file
 	const unsigned char *packet;
 	char errbuf[PCAP_ERRBUF_SIZE];
-	struct pcap_pkthdr header;
+	struct pcap_pkthdr *header;
 	char *filepath;
 
 	int packet_type = UDP; //default udp
@@ -133,24 +140,32 @@ int main(int argc, char *argv[]) {
 	int size_S = 4;
 	int *string_count = calloc(size_S, sizeof(int)); //using calloc because we want to initialize every member to 0
 	
+	const unsigned char* data;
+	int i;
+	unsigned char * data_copy; //copy of data object
+	struct pktStruct myStruct;
 	/* Loop extracting packets as long as we have something to read, storing them inside array_of_payloads */
-	while ((packet = pcap_next(pcap, &header)) != NULL) {
+	while ((i = pcap_next_ex(pcap, &header, &data)) >= 0) {
 		const unsigned char* payload;
+		myStruct.pkt_header = *header; //get header
+		data_copy = malloc(myStruct.pkt_header.len); //allocate memory to copy packet data
+		memcpy(data_copy, data, myStruct.pkt_header.len); //copy of data needed because the data pointer change after this loop
+		myStruct.pkt_data = data_copy;
 		if(packet_type == UDP) //udp
-			payload = dump_UDP_packet(packet); //getting the payload
+			payload = dump_UDP_packet(myStruct.pkt_data); //getting the payload
 		else //tcp
-			payload = dump_TCP_packet(packet); //getting the payload
+			payload = dump_TCP_packet(myStruct.pkt_data); //getting the payload
 			
 		if(payload != NULL) { //we store it in array of payloads
 			array_of_payloads[count] = malloc(strlen((char *)payload)+1); //we have to allocate memory for storing this payload
 			if (count < array_of_payloads_length) {
-				strcpy(array_of_payloads[count], (char *)payload);
+				memcpy(array_of_payloads[count], payload, strlen((char*) payload));
 				count++;
 			}
 			else { //count == array_of_payloads_length
 				//it looks like we exceeded maximum capacity of array, so we use a realloc to reallocate memory
 				array_of_payloads = (char **)realloc(array_of_payloads, (array_of_payloads_length*2)*sizeof(char *)); 
-				strcpy(array_of_payloads[count], (char *)payload);
+				memcpy(array_of_payloads[count], payload, strlen((char *)payload));
 				count++;
 				array_of_payloads_length *= 2;
 			}
