@@ -75,7 +75,6 @@ struct sniff_tcp {
 
 #define UDP 0
 #define TCP 1
-#define ERROR_STR "error404"
 
 /* Reports a problem with dumping the packet with the given timestamp. */
 void problem_pkt(struct timeval ts, const char *reason);
@@ -172,9 +171,9 @@ int main(int argc, char *argv[]) {
 			array_of_payloads[i] = malloc(strlen((char*)payload)+1);
 			memcpy(array_of_payloads[i], payload, strlen((char*)payload));
 		}
-		else { // If the packet is not valid we save an error message into array of payloads
-			array_of_payloads[i] = malloc(strlen(ERROR_STR)+1);
-			memcpy(array_of_payloads[i], ERROR_STR, strlen(ERROR_STR));
+		else { // If the packet is not valid we save a " " message into array of payloads
+			array_of_payloads[i] = malloc(1);
+			memcpy(array_of_payloads[i], " ", 1);
 		}
 			
 	}
@@ -193,14 +192,13 @@ int main(int argc, char *argv[]) {
 		#pragma omp for schedule(guided) collapse(2) 
 		for (int k = 0; k < packet_count; k++) //for every payload
 			for (int i = 0; i < size_S; i++) //for every string
-				if(strcmp((const char*)array_of_payloads[k],ERROR_STR)!=0) //if the payload is valid
 					private_string_count[i] += kmp_matcher((char*)array_of_payloads[k],S[i]);
 		
 		// Merge private string count into shared string count array
 		#pragma omp critical
 		{
 		for (int i = 0; i < size_S; i++)
-			string_count[i]+=private_string_count[i];
+			string_count[i] += private_string_count[i];
 		}
 		free(private_string_count);
 	}
