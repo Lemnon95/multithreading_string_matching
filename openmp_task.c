@@ -133,8 +133,8 @@ int main(int argc, char *argv[]) {
 	//char **array_of_payloads = malloc(sizeof(char *));
 	int array_of_payloads_length = 100; //keeps track of the size of the array of payloads
 	char *array_of_payloads[array_of_payloads_length];
-	char *S[] = {"http", "Linux", "HTTP", "LOCATION", "a", "b"}; //Strings we want to find
-	int size_S = 6;
+	char *S[] = {"http", "Linux", "NOTIFY", "LOCATION"}; //Strings we want to find
+	int size_S = 4;
 	int *string_count = calloc(size_S, sizeof(int)); //using calloc because we want to initialize every member to 0
 	
 	int exit_flag = 0;
@@ -167,7 +167,7 @@ int main(int argc, char *argv[]) {
 					if(payload != NULL) { //we store it in array of payloads
 			
 						array_of_payloads[packet_count] = malloc(strlen((char *)payload)+1); //we have to allocate memory for storing this payload
-						strcpy(array_of_payloads[packet_count], (char *)payload); //copy payload into array
+						memcpy(array_of_payloads[packet_count], payload,  strlen((char *)payload)); //copy payload into array
 						count++;
 					}
 					else { // If the packet is not valid we save an error message into array of payloads

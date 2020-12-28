@@ -13,7 +13,6 @@
 
 // PCAP packet struct
 struct pktStruct {
-    struct pcap_pkthdr pkt_header; // header object - *not* a pointer
     const unsigned char * pkt_data; // data object
 };
 
@@ -146,9 +145,8 @@ int main(int argc, char *argv[]) {
 	
 	while((i = pcap_next_ex(pcap,&header,&data)) >=0) {
 	
-		myStruct.pkt_header = *header; //get header
-		data_copy = malloc(myStruct.pkt_header.len); //allocate memory to copy packet data
-		memcpy(data_copy, data, myStruct.pkt_header.len); //copy of data needed because the data pointer change after this loop
+		data_copy = malloc(header->len); //allocate memory to copy packet data
+		memcpy(data_copy, data, header->len); //copy of data needed because the data pointer change after this loop
 		myStruct.pkt_data = data_copy;
 		if(packet_count >= array_of_packets_length) {
 			//it looks like we exceeded maximum capacity of array, so we use a realloc to reallocate memory
@@ -161,17 +159,17 @@ int main(int argc, char *argv[]) {
 
 	}
 
-	struct pcap_pkthdr packet_header;
 	unsigned char * array_of_payloads[packet_count];
 	
 	int chunk_size = (packet_count/thread_count)/50;
 	printf("chunk size = %d\n", chunk_size);
+	/* Start the performance evaluation */
 	
-	#pragma omp parallel for num_threads(thread_count) schedule(guided) shared(array_of_payloads, array_of_packets, packet_type) private(myStruct, data, packet_header)
+	double start = omp_get_wtime();
+	#pragma omp parallel for num_threads(thread_count) schedule(guided) shared(array_of_payloads, array_of_packets, packet_type) private(myStruct, data)
 	for (int i=0; i<packet_count; i++) {
 		myStruct = array_of_packets[i]; // Get current packet
 		data = myStruct.pkt_data; //Get data of current packet
-		packet_header = myStruct.pkt_header; //Get header of current packet
 		const unsigned char* payload;
 		if(packet_type == UDP) //udp
 			payload = dump_UDP_packet(data); // Getting the payload
@@ -193,8 +191,7 @@ int main(int argc, char *argv[]) {
 	int size_S = 4;
 	int *string_count = calloc(size_S, sizeof(int)); // Using calloc because we want to initialize every member to 0
 	
-	/* Start the performance evaluation */
-	double start = omp_get_wtime();
+	
 	
 	int *private_string_count;
 	#pragma omp parallel num_threads(thread_count) private (private_string_count) shared(string_count)

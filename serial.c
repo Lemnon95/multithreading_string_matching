@@ -11,11 +11,6 @@
 #include "timer.h"
 
 
-// PCAP packet struct
-struct pktStruct {
-    struct pcap_pkthdr pkt_header; // header object - *not* a pointer
-    const unsigned char * pkt_data; // data object
-};
 
 /* UDP header struct */
 struct UDP_hdr {
@@ -101,7 +96,6 @@ void kmp_prefix (char pattern[], int *prefix);
 
 int main(int argc, char *argv[]) {
 	pcap_t *pcap;	//pointer to the pcap file
-	const unsigned char *packet;
 	char errbuf[PCAP_ERRBUF_SIZE];
 	struct pcap_pkthdr *header;
 	char *filepath;
@@ -143,18 +137,19 @@ int main(int argc, char *argv[]) {
 	const unsigned char* data;
 	int i;
 	unsigned char * data_copy; //copy of data object
-	struct pktStruct myStruct;
 	/* Loop extracting packets as long as we have something to read, storing them inside array_of_payloads */
+	
+	/* Start the performance evaluation */
+	double start;
+	GET_TIME(start);
 	while ((i = pcap_next_ex(pcap, &header, &data)) >= 0) {
 		const unsigned char* payload;
-		myStruct.pkt_header = *header; //get header
-		data_copy = malloc(myStruct.pkt_header.len); //allocate memory to copy packet data
-		memcpy(data_copy, data, myStruct.pkt_header.len); //copy of data needed because the data pointer change after this loop
-		myStruct.pkt_data = data_copy;
+		data_copy = malloc(header->len); //allocate memory to copy packet data
+		memcpy(data_copy, data, header->len); 
 		if(packet_type == UDP) //udp
-			payload = dump_UDP_packet(myStruct.pkt_data); //getting the payload
+			payload = dump_UDP_packet(data_copy); //getting the payload
 		else //tcp
-			payload = dump_TCP_packet(myStruct.pkt_data); //getting the payload
+			payload = dump_TCP_packet(data_copy); //getting the payload
 			
 		if(payload != NULL) { //we store it in array of payloads
 			array_of_payloads[count] = malloc(strlen((char *)payload)+1); //we have to allocate memory for storing this payload
@@ -178,9 +173,7 @@ int main(int argc, char *argv[]) {
 	if (!(count == array_of_payloads_length))
 		array_of_payloads = (char **)realloc(array_of_payloads, (count*sizeof(char *)));
 	
-	/* Start the performance evaluation */
-	double start;
-	GET_TIME(start);
+	
 	
 	/* For each payload, we call the string matching algorithm for every string in S */
 	for (int k = 0; k < count; k++)
