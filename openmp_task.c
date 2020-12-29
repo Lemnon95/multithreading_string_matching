@@ -74,7 +74,6 @@ struct sniff_tcp {
 
 #define UDP 0
 #define TCP 1
-#define ERROR_STR "error404"
 
 /* Reports a problem with dumping the packet with the given timestamp. */
 void problem_pkt(struct timeval ts, const char *reason);
@@ -98,7 +97,7 @@ int main(int argc, char *argv[]) {
 	pcap_t *pcap;	//pointer to the pcap file
 	const unsigned char *packet;
 	char errbuf[PCAP_ERRBUF_SIZE];
-	struct pcap_pkthdr header;
+	struct pcap_pkthdr *header;
 	char *filepath;
 	int thread_count;
 	int packet_type = UDP; //default udp
@@ -140,6 +139,8 @@ int main(int argc, char *argv[]) {
 	int exit_flag = 0;
 	int packet_count=0;
 	int *private_string_count;
+	unsigned char * data_copy; //copy of data object
+	int i;
 	
 	double start = omp_get_wtime();
 	
@@ -147,22 +148,23 @@ int main(int argc, char *argv[]) {
 	{
 		#pragma omp single //solo il thread 0
 		{
-			printf("check 1\n");
 			while (exit_flag==0) { //finchè non ho un segnale di uscita
 			
 				packet_count = 0;
 				
 				//Per 100 pacchetti o finché non sono finiti i pacchetti
-				while (	packet_count<array_of_payloads_length && ((packet = pcap_next(pcap, &header)) != NULL)) {
+				while (	packet_count<array_of_payloads_length &&  (i = pcap_next_ex(pcap,&header,&packet)) >=0) {
 				
 					/*
 					* Sezione in cui leggo il payload
 					*/
 					const unsigned char* payload;
+					data_copy = malloc(header->len); //allocate memory to copy packet data
+					memcpy(data_copy, packet, header->len); 
 					if(packet_type == UDP) //udp
-						payload = dump_UDP_packet(packet); //getting the payload
+						payload = dump_UDP_packet(data_copy); //getting the payload
 					else //tcp
-						payload = dump_TCP_packet(packet); //getting the payload
+						payload = dump_TCP_packet(data_copy); //getting the payload
 						
 					if(payload != NULL) { //we store it in array of payloads
 			
@@ -170,9 +172,9 @@ int main(int argc, char *argv[]) {
 						memcpy(array_of_payloads[packet_count], payload,  strlen((char *)payload)); //copy payload into array
 						count++;
 					}
-					else { // If the packet is not valid we save an error message into array of payloads
-						array_of_payloads[packet_count] = malloc(strlen(ERROR_STR)+1);
-						strcpy(array_of_payloads[packet_count], ERROR_STR);
+					else { // If the packet is not valid we save a " " message into array of payloads
+						array_of_payloads[packet_count] = malloc(1);
+						memcpy(array_of_payloads[packet_count], " ", 1);
 					}
 					packet_count++; //aumenta il contatore
 														
@@ -186,9 +188,8 @@ int main(int argc, char *argv[]) {
 				 	
 				 	//Utilizzo l'algoritmo per ogni pacchetto che mi è stato passato
 				 	for (int k = 0; k < packet_count; k++) //for every payload
-				 		if(strcmp((const char*)array_of_payloads[k],ERROR_STR)!=0) //if the payload is valid
-							for (int i =0 ; i < size_S; i++) //for every string 
-								private_string_count[i] += kmp_matcher((char*)array_of_payloads[k],S[i]);
+						for (int i =0 ; i < size_S; i++) //for every string 
+							private_string_count[i] += kmp_matcher((char*)array_of_payloads[k],S[i]);
 								
 	
 				 	// Merge private string count into shared string count array

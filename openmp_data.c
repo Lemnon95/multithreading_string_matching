@@ -153,11 +153,9 @@ int main(int argc, char *argv[]) {
 		
 	unsigned char *array_of_payloads[packet_count];
 	
-	int chunk_size = (packet_count/thread_count)/50;
-	printf("chunk size = %d\n", chunk_size);
 	/* Start the performance evaluation */
-	
 	double start = omp_get_wtime();
+	
 	#pragma omp parallel for num_threads(thread_count) schedule(guided) shared(array_of_payloads, array_of_packets, packet_type) private(data)
 	for (int i = 0; i < packet_count; i++) {
 		data = array_of_packets[i]; // Get current packet
