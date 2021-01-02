@@ -1,3 +1,5 @@
+/* Compilation: mpicc -Wall mpi_dumping.c -o mpi_dumping -lpcap */
+
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -5,80 +7,18 @@
 #include <pcap.h>
 #include <netinet/ip.h>
 #include <netinet/if_ether.h>
+#include "packet_dumping.h"
 
 // PCAP packet struct
 typedef struct {
+	unsigned int len;
 	char data[65535];
 } Packet;
 
-/* UDP header struct */
-struct UDP_hdr {
-	u_short	uh_sport;		/* source port */
-	u_short	uh_dport;		/* destination port */
-	u_short	uh_ulen;		/* datagram length */
-	u_short	uh_sum;		/* datagram checksum */
-};
 
-/* TCP structs */
-
-/* Ethernet header */
-struct sniff_ethernet {
-	u_char ether_dhost[ETHER_ADDR_LEN]; /* Destination host address */
-	u_char ether_shost[ETHER_ADDR_LEN]; /* Source host address */
-	u_short ether_type; /* IP? ARP? RARP? etc */
-};
-
-/* IP header */
-struct sniff_ip {
-	u_char ip_vhl;		/* version << 4 | header length >> 2 */
-	u_char ip_tos;		/* type of service */
-	u_short ip_len;	/* total length */
-	u_short ip_id;		/* identification */
-	u_short ip_off;	/* fragment offset field */
-	#define IP_RF 0x8000		/* reserved fragment flag */
-	#define IP_DF 0x4000		/* don't fragment flag */
-	#define IP_MF 0x2000		/* more fragments flag */
-	#define IP_OFFMASK 0x1fff	/* mask for fragmenting bits */
-	u_char ip_ttl;		/* time to live */
-	u_char ip_p;		/* protocol */
-	u_short ip_sum;		/* checksum */
-	struct in_addr ip_src,ip_dst; /* source and dest address */
-};
-#define IP_HL(ip)		(((ip)->ip_vhl) & 0x0f)
-#define IP_V(ip)		(((ip)->ip_vhl) >> 4)
-
-/* TCP header */
-typedef u_int tcp_seq;
-
-struct sniff_tcp {
-	u_short th_sport;	/* source port */
-	u_short th_dport;	/* destination port */
-	tcp_seq th_seq;	/* sequence number */
-	tcp_seq th_ack;	/* acknowledgement number */
-	u_char th_offx2;	/* data offset, rsvd */
-	#define TH_OFF(th)	(((th)->th_offx2 & 0xf0) >> 4)
-	u_char th_flags;
-	#define TH_FIN 0x01
-	#define TH_SYN 0x02
-	#define TH_RST 0x04
-	#define TH_PUSH 0x08
-	#define TH_ACK 0x10
-	#define TH_URG 0x20
-	#define TH_ECE 0x40
-	#define TH_CWR 0x80
-	#define TH_FLAGS (TH_FIN|TH_SYN|TH_RST|TH_ACK|TH_URG|TH_ECE|TH_CWR)
-	u_short th_win;		/* window */
-	u_short th_sum;		/* checksum */
-	u_short th_urp;		/* urgent pointer */
-};
 
 #define UDP 0
 #define TCP 1
-
-char* dump_TCP_packet(char *packet);
-char* dump_UDP_packet(char *packet);
-void problem_pkt(struct timeval ts, const char *reason);
-void too_short(struct timeval ts, const char *truncated_hdr);
 
 /*Knuth-Morris-Pratt String Matching Algorithm's functions.*/
 int kmp_matcher (char text[], char pattern[]);
@@ -91,11 +31,17 @@ int main (int argc, char *argv[]){
 	MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
 
 	/* Building MPI_Packet Datatype */
+	Packet dummy;
 	MPI_Datatype MPI_Packet;
-	int array_of_blocklengths[] = {65535};
-	MPI_Aint array_of_displacements[] = {0};
-	MPI_Datatype array_of_types[] = {MPI_CHAR};
-	MPI_Type_create_struct(1, array_of_blocklengths, array_of_displacements, array_of_types, &MPI_Packet);
+	int array_of_blocklengths[] = {1, 65535};
+	MPI_Aint array_of_displacements[2];
+	MPI_Aint len_addr, data_addr;
+	array_of_displacements[0] = 0;
+	MPI_Get_address(&dummy.len, &len_addr);
+	MPI_Get_address(&dummy.data, &data_addr);
+	array_of_displacements[1] = data_addr - len_addr;
+	MPI_Datatype array_of_types[] = {MPI_UNSIGNED, MPI_CHAR};
+	MPI_Type_create_struct(2, array_of_blocklengths, array_of_displacements, array_of_types, &MPI_Packet);
 	MPI_Type_commit(&MPI_Packet);
 
 	/* Getting packet type from input */
@@ -132,12 +78,10 @@ int main (int argc, char *argv[]){
 			int size_a = 1;
 			num_packets = 0;
 			const unsigned char *data;
-			unsigned char *data_copy;
 			int i;
 			while ((i = pcap_next_ex(pcap, &header, &data)) >= 0) {
-				data_copy = malloc(header->len); //allocate memory to copy packet data
-				memcpy(data_copy, data, header->len);
-				memcpy(a[num_packets].data, data_copy, header->len); //we store the payload in the array of payloads
+				memcpy(a[num_packets].data, data, header->len); //we store the payload in the array of payloads
+				a[num_packets].len = header->len;
 				num_packets++;
 				if (num_packets == size_a) {
 					a = realloc(a, (size_a*2)*sizeof(Packet));
@@ -185,13 +129,14 @@ int main (int argc, char *argv[]){
 
 	for (int i = 0; i < local_size[my_rank]; i++) {
 		char* payload;
+		unsigned int payload_length;
 		if(packet_type == UDP) //udp
-			payload = dump_UDP_packet(local_packets[i].data); // Getting the payload
+			payload = dump_UDP_packet(local_packets[i].data, &payload_length , local_packets[i].len); // Getting the payload
 		else //tcp
-			payload = dump_TCP_packet(local_packets[i].data); // Getting the payload
+			payload = dump_TCP_packet(local_packets[i].data, &payload_length , local_packets[i].len); // Getting the payload
 		if(payload != NULL) {  // Save payload into array of payload
-			local_payloads[i] = malloc(strlen(payload)+1);
-			memcpy(local_payloads[i], payload, strlen(payload));
+			local_payloads[i] = malloc(payload_length+1);
+			memcpy(local_payloads[i], payload, payload_length);
 		}
 		else { // If the packet is not valid we just save a " " string inside local array of payloads
 			local_payloads[i] = malloc(1);
@@ -226,61 +171,6 @@ int main (int argc, char *argv[]){
 	MPI_Type_free(&MPI_Packet);
 	MPI_Finalize();
 	return 0;
-}
-
-
-void problem_pkt(struct timeval ts, const char *reason) {
-	fprintf(stderr, "error: %s\n", reason);
-
-}
-
-void too_short(struct timeval ts, const char *truncated_hdr) {
-	fprintf(stderr, "packetis truncated and lacks a full %s\n", truncated_hdr);
-}
-
-char* dump_UDP_packet(char *packet) {
-
-	char* payload = packet + 42;
-
-	return payload;
-}
-
-char* dump_TCP_packet(char *packet) {
-	/* ethernet headers are always exactly 14 bytes */
-	#define SIZE_ETHERNET 14
-
-	//const struct sniff_ethernet *ethernet; // The ethernet header
-	const struct sniff_ip *ip; // The IP header
-	const struct sniff_tcp *tcp; // The TCP header
-	char* payload; // Packet payload
-
-	u_int size_ip;
-	u_int size_tcp;
-
-
-	//ethernet = (struct sniff_ethernet*)(packet);
-	packet += SIZE_ETHERNET; //move packet pointer adding the ethernet size to get the ip pointer
-
-	ip = (struct sniff_ip*)(packet);
-	size_ip = IP_HL(ip)*4;
-	if (size_ip < 20) {
-		printf("   * Invalid IP header length: %u bytes\n", size_ip);
-		return NULL;
-	}
-
-	packet += size_ip; //move packet pointer adding the ethernet size to get the tcp pointer
-	tcp = (struct sniff_tcp*)(packet);
-	size_tcp = TH_OFF(tcp)*4;
-	if (size_tcp < 20) {
-		printf("   * Invalid TCP header length: %u bytes\n", size_tcp);
-		return NULL;
-	}
-
-	packet += size_tcp; //move packet pointer adding the tcp size to get the payload pointer
-	payload = (char*)(packet);
-
-	return payload;
-
 }
 
 int kmp_matcher (char text[], char pattern[]) {
@@ -334,3 +224,4 @@ void kmp_prefix (char pattern[], int *prefix) {
 		}
 	}
 }
+
