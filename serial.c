@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
 	double start;
 	GET_TIME(start);
 	while ((i = pcap_next_ex(pcap, &header, &data)) >= 0) {
-		const unsigned char* payload;
+		char* payload;
 		data_copy = malloc(header->len); //allocate memory to copy packet data
 		memcpy(data_copy, data, header->len); 
 		if(packet_type == UDP) //udp
@@ -94,8 +94,9 @@ int main(int argc, char *argv[]) {
 				array_of_payloads_length *= 2;
 			}
 		}
-		else
-			printf("The packet reading has not been completed succesfully!\n");
+		else {
+			//printf("The packet reading has not been completed succesfully!\n");
+		}
 	}
 	
 	/* If array is not full, we reallocate memory */

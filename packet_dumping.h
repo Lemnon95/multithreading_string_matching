@@ -84,7 +84,7 @@ void too_short(const char *truncated_hdr) {
 * OUTPUT
 	payload
 */
-const unsigned char* dump_UDP_packet(const unsigned char *packet, unsigned int * payload_lenght, unsigned int capture_len) {
+char* dump_UDP_packet(const unsigned char *packet, unsigned int * payload_lenght, unsigned int capture_len) {
 
 	struct ip *ip; //from netinet/ip.h
 	struct udp_header *udp_h;
@@ -135,7 +135,7 @@ const unsigned char* dump_UDP_packet(const unsigned char *packet, unsigned int *
 	
 	(*payload_lenght) = capture_len; // Now capture_len is equal to the payload len. We can use it in the calling function
 	
-	return packet; //packet now point to payload
+	return (char*) packet; //packet now point to payload
 }
 
 /* Function use to extract the payload from a TCP packet
@@ -147,7 +147,7 @@ const unsigned char* dump_UDP_packet(const unsigned char *packet, unsigned int *
 * OUTPUT
 	payload
 */
-const unsigned char* dump_TCP_packet(const unsigned char *packet, unsigned int * payload_lenght, unsigned int capture_len) {
+char* dump_TCP_packet(const unsigned char *packet, unsigned int * payload_lenght, unsigned int capture_len) {
 
 	// ethernet headers are always exactly 14 bytes 
 	#define SIZE_ETHERNET 14
@@ -183,6 +183,6 @@ const unsigned char* dump_TCP_packet(const unsigned char *packet, unsigned int *
 	
 	(*payload_lenght) = capture_len; // Now capture_len is equal to the payload len. We can use it in the calling function
 	
-	return packet; //packet now point to payload
+	return (char*) packet; //packet now point to payload
 
 }

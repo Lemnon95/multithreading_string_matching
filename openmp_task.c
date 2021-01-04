@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
 				
 				//Cycle for a number of packet indicated by array_of_payloads_length or until the end of the pcap file
 				while (	packet_count<array_of_payloads_length &&  (i = pcap_next_ex(pcap,&header,&packet)) >=0) {
-					const unsigned char* payload;
+					char* payload;
 					data_copy = malloc(header->len); //allocate memory to copy packet data
 					memcpy(data_copy, packet, header->len); 
 					if(packet_type == UDP) //udp
@@ -113,7 +113,7 @@ int main(int argc, char *argv[]) {
 				 	
 				 	for (int k = 0; k < packet_count; k++) //for every payload
 						for (int i =0 ; i < size_S; i++) //for every string 
-							private_string_count[i] += kmp_matcher((char*)array_of_payloads[k],S[i]);
+							private_string_count[i] += kmp_matcher(array_of_payloads[k],S[i]);
 								
 	
 				 	// Merge private string count into shared string count array

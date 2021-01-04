@@ -26,9 +26,7 @@ void kmp_prefix (char pattern[], int *prefix);
 
 int main(int argc, char *argv[]) {
 	pcap_t *pcap;	//pointer to the pcap file
-	//const unsigned char *packet;
 	char errbuf[PCAP_ERRBUF_SIZE];
-	//struct pcap_pkthdr header;
 	char *filepath;
 	int thread_count;
 	int packet_type = UDP; //default udp
@@ -61,7 +59,6 @@ int main(int argc, char *argv[]) {
 	
 	struct pcap_pkthdr *header;
 	const unsigned char * data; // data object
-	int packet_len; //len of packet
 	struct pkt_str *array_of_packets = malloc(sizeof(struct pkt_str)); 
 	int packet_count = 0; //number of packets into pcap file
 	int array_of_packets_length = 1; //array size
@@ -74,31 +71,31 @@ int main(int argc, char *argv[]) {
 			array_of_packets_length *= 2;
 		}
 		//push packet struct into array of packets
-		array_of_packets[packet_count].data = malloc(header->len); //allocate memory to copy packet data
-		memcpy(array_of_packets[packet_count].data, data, header->len);
-		array_of_packets[packet_count].len = header->len;
+		array_of_packets[packet_count].data = malloc(header->caplen); //allocate memory to copy packet data
+		memcpy(array_of_packets[packet_count].data, data, header->caplen);
+		array_of_packets[packet_count].len = header->caplen;
 		packet_count++;
 
 	}
 	if (!(packet_count == array_of_packets_length))
 		array_of_packets = realloc (array_of_packets, packet_count*sizeof(struct pkt_str)); //we reallocate memory to get even
 		
-	unsigned char *array_of_payloads[packet_count];
+	char *array_of_payloads[packet_count];
 	
 	/* Start the performance evaluation */
 	double start = omp_get_wtime();
 	
-	#pragma omp parallel for num_threads(thread_count) schedule(guided) shared(array_of_payloads, array_of_packets, packet_type) private(data)
+	#pragma omp parallel for num_threads(thread_count) schedule(guided) shared(array_of_payloads, array_of_packets, packet_type)
 	for (int i = 0; i < packet_count; i++) {
-		data = array_of_packets[i].data; // Get current packet
-		packet_len = array_of_packets[i].len; // Get current packet len
-		const unsigned char* payload;
+		const unsigned char * data = array_of_packets[i].data; // Get current packet
+		int packet_len = array_of_packets[i].len; // Get current packet len
+		char* payload;
 		unsigned int payload_length;
 		if(packet_type == UDP) //udp
 			payload = dump_UDP_packet(data, &payload_length, packet_len); // Getting the payload
 		else //tcp
 			payload = dump_TCP_packet(data, &payload_length, packet_len); // Getting the payload
-			
+		
 		if(payload != NULL) {  // Save payload into array of payload
 			array_of_payloads[i] = malloc(payload_length+1);
 			memcpy(array_of_payloads[i], payload, payload_length);
@@ -106,15 +103,12 @@ int main(int argc, char *argv[]) {
 		else { // If the packet is not valid we save a " " message into array of payloads
 			array_of_payloads[i] = malloc(1);
 			memcpy(array_of_payloads[i], " ", 1);
-		}
-			
+		}	
 	}
 	
 	char *S[] = {"http", "Linux", "NOTIFY", "LOCATION"}; //Strings we want to find
 	int size_S = 4;
 	int *string_count = calloc(size_S, sizeof(int)); // Using calloc because we want to initialize every member to 0
-	
-	
 	
 	int *private_string_count;
 	#pragma omp parallel num_threads(thread_count) private (private_string_count) shared(string_count)
@@ -124,7 +118,7 @@ int main(int argc, char *argv[]) {
 		#pragma omp for schedule(guided) collapse(2) 
 		for (int k = 0; k < packet_count; k++) //for every payload
 			for (int i = 0; i < size_S; i++) //for every string
-					private_string_count[i] += kmp_matcher((char*)array_of_payloads[k],S[i]);
+					private_string_count[i] += kmp_matcher(array_of_payloads[k],S[i]);
 		
 		// Merge private string count into shared string count array
 		#pragma omp critical
