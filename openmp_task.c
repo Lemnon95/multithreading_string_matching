@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
 				packet_count = 0; //Reinitialize the packet counter
 				
 				//Cycle for a number of packet indicated by array_of_payloads_length or until the end of the pcap file
-				while (	packet_count<array_of_payloads_length &&  (i = pcap_next_ex(pcap,&header,&packet)) >=0) {
+				while (packet_count<array_of_payloads_length &&  (i = pcap_next_ex(pcap,&header,&packet)) >=0) {
 					char* payload;
 					data_copy = malloc(header->len); //allocate memory to copy packet data
 					memcpy(data_copy, packet, header->len); 

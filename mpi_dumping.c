@@ -21,8 +21,8 @@ typedef struct {
 #define TCP 1
 
 /*Knuth-Morris-Pratt String Matching Algorithm's functions.*/
-int kmp_matcher (char text[], char pattern[]);
-void kmp_prefix (char pattern[], int *prefix);
+int kmp_matcher (char text[], char pattern[], int *prefix_array);
+int* kmp_prefix (char pattern[]);
 
 int main (int argc, char *argv[]){
 	int my_rank, comm_sz;
@@ -148,11 +148,15 @@ int main (int argc, char *argv[]){
 	int size_S = 4;
 	int *local_string_count = calloc(size_S, sizeof(int));
 	int *global_string_count = calloc(size_S, sizeof(int));
+	int **prefix_array = malloc(size_S*sizeof(int));
+	for (int i = 0; i < size_S; i++) {
+		prefix_array[i] = kmp_prefix(S[i]);
+	}
 
 	/* For each payload, we call the string matching algorithm for every string in S */
 	for (int k = 0; k < local_size[my_rank]; k++)
 		for (int i = 0; i < size_S; i++)
-				local_string_count[i] += kmp_matcher(local_payloads[k],S[i]);
+				local_string_count[i] += kmp_matcher(local_payloads[k],S[i], prefix_array[i]);
 
 	MPI_Reduce(local_string_count, global_string_count, size_S, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD); //with this call, we get the total values in global_string_count
 	local_finish = MPI_Wtime();
@@ -173,13 +177,11 @@ int main (int argc, char *argv[]){
 	return 0;
 }
 
-int kmp_matcher (char text[], char pattern[]) {
+int kmp_matcher (char text[], char pattern[], int *prefix_array) {
 	int text_len = strlen(text);
 	int pattern_len = strlen(pattern);
 	if (text_len < pattern_len) //no point trying to match things
 		return 0;
-	int *prefix_array = malloc(pattern_len*sizeof(int));
-	kmp_prefix(pattern, prefix_array);
 	int i = 0;
 	int j = 0;
 	int occurrences = 0; //counter for the number of occurrences of pattern in text
@@ -199,13 +201,12 @@ int kmp_matcher (char text[], char pattern[]) {
 				i++;
 		}
 	}
-
-	free(prefix_array);
 	return occurrences;
 }
 
-void kmp_prefix (char pattern[], int *prefix) {
+int* kmp_prefix (char pattern[]) {
 	int pattern_len = strlen(pattern);
+	int *prefix = malloc(pattern_len*sizeof(int));
 	int j = 0;
 	prefix[0] = 0; //first letter does not have any prefix
 	int i = 1;
@@ -223,5 +224,6 @@ void kmp_prefix (char pattern[], int *prefix) {
 			i++;
 		}
 	}
+	return prefix;
 }
 

@@ -84,7 +84,7 @@ void too_short(const char *truncated_hdr) {
 * OUTPUT
 	payload
 */
-char* dump_UDP_packet(const unsigned char *packet, unsigned int * payload_lenght, unsigned int capture_len) {
+char* dump_UDP_packet(char *packet, unsigned int * payload_lenght, unsigned int capture_len) {
 
 	struct ip *ip; //from netinet/ip.h
 	struct udp_header *udp_h;
@@ -147,7 +147,7 @@ char* dump_UDP_packet(const unsigned char *packet, unsigned int * payload_lenght
 * OUTPUT
 	payload
 */
-char* dump_TCP_packet(const unsigned char *packet, unsigned int * payload_lenght, unsigned int capture_len) {
+char* dump_TCP_packet(char *packet, unsigned int * payload_lenght, unsigned int capture_len) {
 
 	// ethernet headers are always exactly 14 bytes 
 	#define SIZE_ETHERNET 14
