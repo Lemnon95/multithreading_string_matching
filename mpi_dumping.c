@@ -75,7 +75,7 @@ int main (int argc, char *argv[]){
 		}
 		else {
 			a = malloc(sizeof(Packet));
-			int size_a = 1;
+			int size_a = 1;gcc -g -Wall -fopenmp openmp_data.c -o openmp_data -lpcap
 			num_packets = 0;
 			const unsigned char *data;
 			int i;
@@ -148,7 +148,7 @@ int main (int argc, char *argv[]){
 	int size_S = 4;
 	int *local_string_count = calloc(size_S, sizeof(int));
 	int *global_string_count = calloc(size_S, sizeof(int));
-	int **prefix_array = malloc(size_S*sizeof(int));
+	int **prefix_array = malloc(size_S*sizeof(int*));
 	for (int i = 0; i < size_S; i++) {
 		prefix_array[i] = kmp_prefix(S[i]);
 	}

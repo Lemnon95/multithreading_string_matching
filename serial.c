@@ -1,3 +1,4 @@
+
 /* 	Compilation: gcc -g serial.c -o serial -lpcap
 	Usage: ./serial <file.pcap>
  */
@@ -17,8 +18,8 @@
 
 
 /*Knuth-Morris-Pratt String Matching Algorithm's functions.*/
-int kmp_matcher (char text[], char pattern[]);
-void kmp_prefix (char pattern[], int *prefix); 
+int kmp_matcher (char text[], char pattern[], int *prefix_array);
+int* kmp_prefix (char pattern[]);
 
 	
 
@@ -106,9 +107,14 @@ int main(int argc, char *argv[]) {
 	
 	
 	/* For each payload, we call the string matching algorithm for every string in S */
+	int **prefix_array = malloc(size_S*sizeof(int*));
+	/* Main thread is in charge of building the prefix_array */
+	for (int i = 0; i < size_S; i++) {
+		prefix_array[i] = kmp_prefix(S[i]);
+	}
 	for (int k = 0; k < count; k++)
 		for (int i = 0; i < size_S; i++) 
-				string_count[i] += kmp_matcher(array_of_payloads[k],S[i]);
+				string_count[i] += kmp_matcher(array_of_payloads[k],S[i], prefix_array[i]);
 				
 	
 	/* Stop the performance evaluation */		
@@ -131,14 +137,12 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 
-int kmp_matcher (char text[], char pattern[]) {
+int kmp_matcher (char text[], char pattern[], int *prefix_array) {
 	int text_len = strlen(text);
 	int pattern_len = strlen(pattern);
 	if (text_len < pattern_len) //no point trying to match things
 		return 0;
-	int *prefix_array = malloc(pattern_len*sizeof(int));
-	kmp_prefix(pattern, prefix_array);
-	int i = 0; 
+	int i = 0;
 	int j = 0;
 	int occurrences = 0; //counter for the number of occurrences of pattern in text
 	while (i < text_len) {
@@ -157,13 +161,12 @@ int kmp_matcher (char text[], char pattern[]) {
 				i++;
 		}
 	}
-	
-	free(prefix_array);
 	return occurrences;
 }
 
-void kmp_prefix (char pattern[], int *prefix) {
+int* kmp_prefix (char pattern[]) {
 	int pattern_len = strlen(pattern);
+	int *prefix = malloc(pattern_len*sizeof(int));
 	int j = 0;
 	prefix[0] = 0; //first letter does not have any prefix
 	int i = 1;
@@ -181,4 +184,5 @@ void kmp_prefix (char pattern[], int *prefix) {
 			i++;
 		}
 	}
+	return prefix;
 }

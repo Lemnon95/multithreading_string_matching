@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
 	int size_S = 4;
 	int *string_count = calloc(size_S, sizeof(int)); // Using calloc because we want to initialize every member to 0
 	int *private_string_count;
-	int **prefix_array = malloc(size_S*sizeof(int));
+	int **prefix_array = malloc(size_S*sizeof(int*));
 	/* Main thread is in charge of building the prefix_array */
 	for (int i = 0; i < size_S; i++) {
 		prefix_array[i] = kmp_prefix(S[i]);
