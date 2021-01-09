@@ -1,5 +1,5 @@
 /* 	Compilation: gcc -g -Wall -fopenmp openmp_data.c -o openmp_data -lpcap
-	Usage: ./openmp_data <file.pcap> thread_number [tcp/udp]
+	Usage: ./openmp_data <file.pcap> <string.txt> thread_number [tcp/udp]
  */
 
 #include <stdio.h>
@@ -28,29 +28,69 @@ int main(int argc, char *argv[]) {
 	pcap_t *pcap;	//pointer to the pcap file
 	char errbuf[PCAP_ERRBUF_SIZE];
 	char *filepath;
+	char *strings_file_path;
 	int thread_count;
 	int packet_type = UDP; //default udp
 
-	if (argc==3 || argc ==4) {
+	if (argc==4 || argc ==5) {
 		filepath = argv[1]; //get filename from command-line
-		thread_count = atoi(argv[2]); //get thread number from command-line
+		strings_file_path = argv[2];
+		thread_count = atoi(argv[3]); //get thread number from command-line
 
-		if(argc == 4) { //get packet type from command-line
-			if(strcmp(argv[3], "udp") == 0)
+		if(argc == 5) { //get packet type from command-line
+			if(strcmp(argv[4], "udp") == 0)
 				packet_type=UDP;
-			else if (strcmp(argv[3], "tcp") == 0)
+			else if (strcmp(argv[4], "tcp") == 0)
 				packet_type=TCP;
 			else {
-				printf("USAGE ./serial <file.pcap> thread_number [tcp/udp]\n");
+				printf("USAGE ./openmp_data <file.pcap> <string.txt> thread_number [tcp/udp]\n");
 				exit(1);
 			}
 		}
 	}
 	else {
-		printf("USAGE: ./serial <file.pcap> [tcp/udp]\n");
+		printf("USAGE: ./openmp_data <file.pcap> <string.txt> thread_number [tcp/udp]\n");
 		exit(1);
 	}
+	
+	//we read strings for the string matching from txt file 
+	char **array_of_strings = malloc(sizeof(char *));
+	int array_of_strings_length = 1;	
+	int count = 0; //actual number of strings
 
+	//open file and check errors
+	FILE *fp = fopen(strings_file_path,"r");
+	if (fp == NULL) {
+		perror("error opening file: ");
+		exit(1);
+	}
+	char str[100]; //buffer when we save the strings in the file
+	
+	while( fscanf(fp, "%s", str) != EOF ) //we read all the file word by word
+	{
+
+		array_of_strings[count] = malloc(strlen(str)+1); //we have to allocate memory for storing this payload
+		if (count < array_of_strings_length) {
+			memcpy(array_of_strings[count], str, strlen(str)); //copy string into array
+			count++;
+		}
+		else { //count == array_of_strings_length
+			//it looks like we exceeded maximum capacity of array, so we use a realloc to reallocate memory
+			array_of_strings = (char **)realloc(array_of_strings, (array_of_strings_length*2)*sizeof(char *));
+			memcpy(array_of_strings[count], str, strlen(str)); //copy string into array
+			count++;
+			array_of_strings_length *= 2;
+		}
+	}
+	fclose(fp);
+	
+	/* If array is not full, we reallocate memory */
+	if (!(count == array_of_strings_length))
+		array_of_strings = (char **)realloc(array_of_strings, (count*sizeof(char *)));
+	array_of_strings_length = count;
+	
+	
+	//now we open the pcap file
 	pcap = pcap_open_offline(filepath, errbuf);	//opening the pcap file
 	if (pcap == NULL) {	//check error in pcap file
 		fprintf(stderr, "error reading pcap file: %s\n", errbuf);
@@ -106,29 +146,27 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	char *S[] = {"http", "Linux", "NOTIFY", "LOCATION"}; //Strings we want to find
-	int size_S = 4;
-	int *string_count = calloc(size_S, sizeof(int)); // Using calloc because we want to initialize every member to 0
+	int *string_count = calloc(array_of_strings_length, sizeof(int)); // Using calloc because we want to initialize every member to 0
 	int *private_string_count;
-	int **prefix_array = malloc(size_S*sizeof(int*));
+	int **prefix_array = malloc(array_of_strings_length*sizeof(int*));
 	/* Main thread is in charge of building the prefix_array */
-	for (int i = 0; i < size_S; i++) {
-		prefix_array[i] = kmp_prefix(S[i]);
+	for (int i = 0; i < array_of_strings_length; i++) {
+		prefix_array[i] = kmp_prefix(array_of_strings[i]);
 	}
 
 	#pragma omp parallel num_threads(thread_count) private (private_string_count) shared(string_count)
 	{
-		private_string_count = calloc(size_S, sizeof(int)); // Using calloc because we want to initialize every member to 0
+		private_string_count = calloc(array_of_strings_length, sizeof(int)); // Using calloc because we want to initialize every member to 0
 		// For each payload, we call the string matching algorithm for every string in S
 		#pragma omp for schedule(guided) collapse(2)
 		for (int k = 0; k < packet_count; k++) //for every payload
-			for (int i = 0; i < size_S; i++) //for every string
-					private_string_count[i] += kmp_matcher(array_of_payloads[k], S[i], prefix_array[i]);
+			for (int i = 0; i < array_of_strings_length; i++) //for every string
+					private_string_count[i] += kmp_matcher(array_of_payloads[k], array_of_strings[i], prefix_array[i]);
 
 		// Merge private string count into shared string count array
 		#pragma omp critical
 		{
-		for (int i = 0; i < size_S; i++)
+		for (int i = 0; i < array_of_strings_length; i++)
 			string_count[i] += private_string_count[i];
 		}
 		free(private_string_count);
@@ -140,8 +178,8 @@ int main(int argc, char *argv[]) {
 	// Now we print the output
 
 	printf("Printing the number of appereances of each string throughout the entire pcap file:\n");
-	for (int i = 0; i < size_S; i++)
-		printf("%s: %d times!\n", S[i], string_count[i]);
+	for (int i = 0; i < array_of_strings_length; i++)
+		printf("%s: %d times!\n", array_of_strings[i], string_count[i]);
 
 	// Now we print performance evaluation
 	printf("Elapsed time = %f seconds\n", finish-start);
