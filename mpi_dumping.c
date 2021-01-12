@@ -43,25 +43,65 @@ int main (int argc, char *argv[]){
 	MPI_Datatype array_of_types[] = {MPI_UNSIGNED, MPI_CHAR};
 	MPI_Type_create_struct(2, array_of_blocklengths, array_of_displacements, array_of_types, &MPI_Packet);
 	MPI_Type_commit(&MPI_Packet);
+	
+	char * strings_file_path;
 
 	/* Getting packet type from input */
 	int packet_type;
-	if (argc == 3) {
-		if (strcmp(argv[2], "udp") == 0) {
+	if (argc == 4) {
+		strings_file_path = argv[2];
+		if (strcmp(argv[3], "udp") == 0) {
 			packet_type = UDP;
 		}
-		else if (strcmp(argv[2], "tcp") == 0) {
+		else if (strcmp(argv[3], "tcp") == 0) {
 			packet_type = TCP;
 		}
 		else {
-			printf("USAGE ./serial <file.pcap> [tcp/udp]\n");
+			printf("USAGE ./serial <file.pcap> <strings.txt> [tcp/udp]\n");
 			exit(1);
 		}
 	}
 	else {
-		printf("USAGE: ./serial <file.pcap> [tcp/udp]\n");
+		printf("USAGE: ./serial <file.pcap> <strings.txt> [tcp/udp]\n");
 		exit(1);
 	}
+	
+	//we read strings for the string matching from txt file 
+	char **array_of_strings = malloc(sizeof(char *));
+	int array_of_strings_length = 1;	
+	int count = 0; //actual number of strings
+
+	//open file and check errors
+	FILE *fp = fopen(strings_file_path,"r");
+	if (fp == NULL) {
+		perror("error opening file: ");
+		exit(1);
+	}
+	char str[100]; //buffer when we save the strings in the file
+	
+	while( fscanf(fp, "%s", str) != EOF ) //we read all the file word by word
+	{
+
+		array_of_strings[count] = malloc(strlen(str)+1); //we have to allocate memory for storing this payload
+		if (count < array_of_strings_length) {
+			memcpy(array_of_strings[count], str, strlen(str)); //copy string into array
+			count++;
+		}
+		else { //count == array_of_strings_length
+			//it looks like we exceeded maximum capacity of array, so we use a realloc to reallocate memory
+			array_of_strings = (char **)realloc(array_of_strings, (array_of_strings_length*2)*sizeof(char *));
+			memcpy(array_of_strings[count], str, strlen(str)); //copy string into array
+			count++;
+			array_of_strings_length *= 2;
+		}
+	}
+	fclose(fp);
+	
+	// If array is not full, we reallocate memory 
+	if (!(count == array_of_strings_length))
+		array_of_strings = (char **)realloc(array_of_strings, (count*sizeof(char *)));
+	array_of_strings_length = count;
+	
 
 	int num_packets, flag = 0;
 	Packet *a = NULL;
@@ -75,7 +115,7 @@ int main (int argc, char *argv[]){
 		}
 		else {
 			a = malloc(sizeof(Packet));
-			int size_a = 1;gcc -g -Wall -fopenmp openmp_data.c -o openmp_data -lpcap
+			int size_a = 1;//gcc -g -Wall -fopenmp openmp_data.c -o openmp_data -lpcap
 			num_packets = 0;
 			const unsigned char *data;
 			int i;
@@ -144,21 +184,19 @@ int main (int argc, char *argv[]){
 		}
 	}
 
-	char *S[] = {"http", "Linux", "NOTIFY", "LOCATION"}; //Strings we want to find
-	int size_S = 4;
-	int *local_string_count = calloc(size_S, sizeof(int));
-	int *global_string_count = calloc(size_S, sizeof(int));
-	int **prefix_array = malloc(size_S*sizeof(int*));
-	for (int i = 0; i < size_S; i++) {
-		prefix_array[i] = kmp_prefix(S[i]);
+	int *local_string_count = calloc(array_of_strings_length, sizeof(int));
+	int *global_string_count = calloc(array_of_strings_length, sizeof(int));
+	int **prefix_array = malloc(array_of_strings_length*sizeof(int*));
+	for (int i = 0; i < array_of_strings_length; i++) {
+		prefix_array[i] = kmp_prefix(array_of_strings[i]);
 	}
 
 	/* For each payload, we call the string matching algorithm for every string in S */
 	for (int k = 0; k < local_size[my_rank]; k++)
-		for (int i = 0; i < size_S; i++)
-				local_string_count[i] += kmp_matcher(local_payloads[k],S[i], prefix_array[i]);
+		for (int i = 0; i < array_of_strings_length; i++)
+				local_string_count[i] += kmp_matcher(local_payloads[k],array_of_strings[i], prefix_array[i]);
 
-	MPI_Reduce(local_string_count, global_string_count, size_S, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD); //with this call, we get the total values in global_string_count
+	MPI_Reduce(local_string_count, global_string_count, array_of_strings_length, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD); //with this call, we get the total values in global_string_count
 	local_finish = MPI_Wtime();
 	local_elapsed = local_finish - local_start;
 
@@ -166,8 +204,8 @@ int main (int argc, char *argv[]){
 
 	if (my_rank == 0) {
 		printf("Printing the number of appereances of each string throughout the entire pcap file:\n");
-		for (int i = 0; i < size_S; i++)
-			printf("%s: %d times!\n", S[i], global_string_count[i]);
+		for (int i = 0; i < array_of_strings_length; i++)
+			printf("%s: %d times!\n", array_of_strings[i], global_string_count[i]);
 			// Now we print performance evaluation
 		printf("Elapsed time = %f seconds\n", elapsed);
 	}

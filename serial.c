@@ -21,7 +21,6 @@ int kmp_matcher (char text[], char pattern[], int *prefix_array);
 int* kmp_prefix (char pattern[]);
 
 	
-
 int main(int argc, char *argv[]) {
 	pcap_t *pcap;	//pointer to the pcap file
 	char errbuf[PCAP_ERRBUF_SIZE];
@@ -82,7 +81,7 @@ int main(int argc, char *argv[]) {
 	}
 	fclose(fp);
 	
-	/* If array is not full, we reallocate memory */
+	// If array is not full, we reallocate memory 
 	if (!(count == array_of_strings_length))
 		array_of_strings = (char **)realloc(array_of_strings, (count*sizeof(char *)));
 	array_of_strings_length = count;
@@ -94,12 +93,11 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr, "error reading pcap file: %s\n", errbuf);
 		exit(1);
 	}
+	
 
 	count = 0; //actual number of payloads
 	char **array_of_payloads = malloc(sizeof(char *));
 	int array_of_payloads_length = 1; //keeps track of the size of the array of payloads
-	//char *S[] = {"http", "Linux", "NOTIFY", "LOCATION"}; //Strings we want to find
-	//int size_S = 4;
 	int *string_count = calloc(array_of_strings_length, sizeof(int)); //using calloc because we want to initialize every member to 0
 	
 	const unsigned char* data;
@@ -111,6 +109,7 @@ int main(int argc, char *argv[]) {
 	/* Start the performance evaluation */
 	double start;
 	GET_TIME(start);
+	
 	
 	//Start reading pcap file
 	while ((i = pcap_next_ex(pcap, &header, &data)) >= 0) {
@@ -145,8 +144,6 @@ int main(int argc, char *argv[]) {
 	if (!(count == array_of_payloads_length))
 		array_of_payloads = (char **)realloc(array_of_payloads, (count*sizeof(char *)));
 	
-	
-	
 	/* For each payload, we call the string matching algorithm for every string in S */
 	int **prefix_array = malloc(array_of_strings_length*sizeof(int*));
 	/* Main thread is in charge of building the prefix_array */
@@ -177,6 +174,7 @@ int main(int argc, char *argv[]) {
 	free(string_count);
 	return 0;
 }
+
 
 int kmp_matcher (char text[], char pattern[], int *prefix_array) {
 	int text_len = strlen(text);
