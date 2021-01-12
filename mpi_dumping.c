@@ -205,7 +205,8 @@ int main (int argc, char *argv[]){
 	if (my_rank == 0) {
 		printf("Printing the number of appereances of each string throughout the entire pcap file:\n");
 		for (int i = 0; i < array_of_strings_length; i++)
-			printf("%s: %d times!\n", array_of_strings[i], global_string_count[i]);
+			if(global_string_count[i] != 0)
+				printf("%s: %d times!\n", array_of_strings[i], global_string_count[i]);
 			// Now we print performance evaluation
 		printf("Elapsed time = %f seconds\n", elapsed);
 	}
