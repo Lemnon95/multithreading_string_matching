@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
 	int exit_flag = 0;
 	int packet_count=0;
 	int *private_string_count;
-	unsigned char * data_copy; //copy of data object
+	char * data_copy; //copy of data object
 	unsigned int packet_len;
 	int i;
 	

@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
 
 	#pragma omp parallel for num_threads(thread_count) schedule(guided) shared(array_of_payloads, array_of_packets, packet_type)
 	for (int i = 0; i < packet_count; i++) {
-		const unsigned char * data = array_of_packets[i].data; // Get current packet
+		char * data = (char*)array_of_packets[i].data; // Get current packet
 		int packet_len = array_of_packets[i].len; // Get current packet len
 		char* payload;
 		unsigned int payload_length;
