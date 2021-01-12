@@ -83,6 +83,11 @@ int main(int argc, char *argv[]) {
 	}
 	fclose(fp);
 	
+	/*
+	* Qui vanno calcolati i prefissi delle stringhe
+	*
+	*/
+	
 	/* If array is not full, we reallocate memory */
 	if (!(count == array_of_strings_length))
 		array_of_strings = (char **)realloc(array_of_strings, (count*sizeof(char *)));
