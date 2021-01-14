@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
 	}
 	char str[100]; //buffer when we save the strings in the file
 	
-	while( fscanf(fp, "%s", str) != EOF ) //we read all the file word by word
+	while(fscanf(fp, "%s", str) != EOF) //we read all the file word by word
 	{
 
 		array_of_strings[count] = malloc(strlen(str)+1); //we have to allocate memory for storing this payload
