@@ -13,7 +13,7 @@
 #include <omp.h>
 
 struct pkt_str {
-	unsigned char * data;
+	unsigned char *data;
 	unsigned int len;
 };
 
@@ -52,10 +52,10 @@ int main(int argc, char *argv[]) {
 		printf("USAGE: ./openmp_data <file.pcap> <string.txt> thread_number [tcp/udp]\n");
 		exit(1);
 	}
-	
-	//we read strings for the string matching from txt file 
+
+	//we read strings for the string matching from txt file
 	char **array_of_strings = malloc(sizeof(char *));
-	int array_of_strings_length = 1;	
+	int array_of_strings_length = 1;
 	int count = 0; //actual number of strings
 
 	//open file and check errors
@@ -65,8 +65,8 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 	char str[100]; //buffer when we save the strings in the file
-	
-	while( fscanf(fp, "%s", str) != EOF ) //we read all the file word by word
+
+	while(fscanf(fp, "%s", str) != EOF) //we read all the file word by word
 	{
 
 		array_of_strings[count] = malloc(strlen(str)+1); //we have to allocate memory for storing this payload
@@ -83,13 +83,13 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	fclose(fp);
-	
+
 	/* If array is not full, we reallocate memory */
 	if (!(count == array_of_strings_length))
 		array_of_strings = (char **)realloc(array_of_strings, (count*sizeof(char *)));
 	array_of_strings_length = count;
-	
-	
+
+
 	//now we open the pcap file
 	pcap = pcap_open_offline(filepath, errbuf);	//opening the pcap file
 	if (pcap == NULL) {	//check error in pcap file
@@ -186,14 +186,23 @@ int main(int argc, char *argv[]) {
 	printf("Elapsed time = %f seconds\n", finish-start);
 
 	// We have to free previously allocated memory
-	for(int i=0; i<packet_count; i++)
+	for(int i=0; i<packet_count; i++){
 		free(array_of_payloads[i]);
+	} // free(array_of_payloads) not needed cause it has been allocated in the stack
 
-	// We have to free array of packets
-	free(array_of_packets);
+	for (int i = 0; i < packet_count; i++) {
+			free(array_of_packets[i].data);
+	} free(array_of_packets);
 
-	// We have to free string count array
 	free(string_count);
+
+	for (int i = 0; i < array_of_strings_length; i++) {
+		free(prefix_array[i]);
+	} free(prefix_array);
+
+	for (int i = 0; i < array_of_strings_length; i++) {
+		free(array_of_strings[i]);
+	} free(array_of_strings);
 
 	return 0;
 

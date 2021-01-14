@@ -172,7 +172,17 @@ int main(int argc, char *argv[]) {
 	for (int k = 0; k < count; k++) {
 		free(array_of_payloads[k]);
 	} free(array_of_payloads);
+	
 	free(string_count);
+	
+	for (int i = 0; i < array_of_strings_length; i++) {
+		free(prefix_array[i]);
+	} free(prefix_array);
+	
+	for (int i = 0; i < array_of_strings_length; i++) {
+		free(array_of_strings[i]);
+	} free(array_of_strings);
+	
 	return 0;
 }
 
