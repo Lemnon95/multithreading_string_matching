@@ -71,13 +71,13 @@ int main(int argc, char *argv[]) {
 
 		array_of_strings[count] = malloc(strlen(str)+1); //we have to allocate memory for storing this payload
 		if (count < array_of_strings_length) {
-			memcpy(array_of_strings[count], str, strlen(str)); //copy string into array
+			strcpy(array_of_strings[count], str); //copy string into array
 			count++;
 		}
 		else { //count == array_of_strings_length
 			//it looks like we exceeded maximum capacity of array, so we use a realloc to reallocate memory
 			array_of_strings = (char **)realloc(array_of_strings, (array_of_strings_length*2)*sizeof(char *));
-			memcpy(array_of_strings[count], str, strlen(str)); //copy string into array
+			strcpy(array_of_strings[count], str); //copy string into array
 			count++;
 			array_of_strings_length *= 2;
 		}
