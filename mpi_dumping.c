@@ -44,7 +44,7 @@ int main (int argc, char *argv[]){
 	MPI_Type_create_struct(2, array_of_blocklengths, array_of_displacements, array_of_types, &MPI_Packet);
 	MPI_Type_commit(&MPI_Packet);
 	
-	char * strings_file_path;
+	char *strings_file_path;
 
 	/* Getting packet type from input */
 	int packet_type;
@@ -81,16 +81,15 @@ int main (int argc, char *argv[]){
 	
 	while( fscanf(fp, "%s", str) != EOF ) //we read all the file word by word
 	{
-
 		array_of_strings[count] = malloc(strlen(str)+1); //we have to allocate memory for storing this payload
 		if (count < array_of_strings_length) {
-			memcpy(array_of_strings[count], str, strlen(str)); //copy string into array
+			strcpy(array_of_strings[count], str); //copy string into array
 			count++;
 		}
 		else { //count == array_of_strings_length
 			//it looks like we exceeded maximum capacity of array, so we use a realloc to reallocate memory
 			array_of_strings = (char **)realloc(array_of_strings, (array_of_strings_length*2)*sizeof(char *));
-			memcpy(array_of_strings[count], str, strlen(str)); //copy string into array
+			strcpy(array_of_strings[count], str); //copy string into array
 			count++;
 			array_of_strings_length *= 2;
 		}

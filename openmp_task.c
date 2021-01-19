@@ -17,8 +17,8 @@
 #define TCP 1
 
 /*Knuth-Morris-Pratt String Matching Algorithm's functions.*/
-int kmp_matcher (char text[], char pattern[]);
-void kmp_prefix (char pattern[], int *prefix); 
+int kmp_matcher (char text[], char pattern[], int *prefix_array);
+int* kmp_prefix (char pattern[]);
 
 
 int main(int argc, char *argv[]) {
@@ -68,30 +68,37 @@ int main(int argc, char *argv[]) {
 	while( fscanf(fp, "%s", str) != EOF ) //we read all the file word by word
 	{
 
-		array_of_strings[count] = malloc(strlen(str)+1); //we have to allocate memory for storing this payload
+		array_of_strings[count] = malloc(strlen(str)+1); //we have to allocate memory for storing this string
 		if (count < array_of_strings_length) {
-			memcpy(array_of_strings[count], str, strlen(str)); //copy string into array
+			strcpy(array_of_strings[count], str); //copy string into array
 			count++;
 		}
 		else { //count == array_of_strings_length
 			//it looks like we exceeded maximum capacity of array, so we use a realloc to reallocate memory
 			array_of_strings = (char **)realloc(array_of_strings, (array_of_strings_length*2)*sizeof(char *));
-			memcpy(array_of_strings[count], str, strlen(str)); //copy string into array
+			strcpy(array_of_strings[count], str); //copy string into array
 			count++;
 			array_of_strings_length *= 2;
 		}
 	}
 	fclose(fp);
 	
-	/*
-	* Qui vanno calcolati i prefissi delle stringhe
-	*
-	*/
+	
+	
+	
 	
 	/* If array is not full, we reallocate memory */
 	if (!(count == array_of_strings_length))
 		array_of_strings = (char **)realloc(array_of_strings, (count*sizeof(char *)));
 	array_of_strings_length = count;
+	
+	
+	/* Now building prefix array */
+	int **prefix_array = malloc(array_of_strings_length*sizeof(int*));
+	/* Main thread is in charge of building the prefix_array */
+	for (int i = 0; i < array_of_strings_length; i++) {
+		prefix_array[i] = kmp_prefix(array_of_strings[i]);
+	}
 
 
 	//now we open the pcap file
@@ -156,7 +163,7 @@ int main(int argc, char *argv[]) {
 				 	
 				 	for (int k = 0; k < packet_count; k++) //for every payload
 						for (int i =0 ; i < array_of_strings_length; i++) //for every string 
-							private_string_count[i] += kmp_matcher(array_of_payloads[k],array_of_strings[i]);
+							private_string_count[i] += kmp_matcher(array_of_payloads[k],array_of_strings[i], prefix_array[i]);
 								
 	
 				 	// Merge private string count into shared string count array
@@ -187,18 +194,28 @@ int main(int argc, char *argv[]) {
 		
 	// Now we print performance evaluation 
 	printf("Elapsed time = %f seconds\n", finish-start);
+	
+	
+	/* We have to free previously allocated memory */
+	for (int i = 0; i < array_of_strings_length; i++) {
+		free(prefix_array[i]);
+	} free(prefix_array);
+
+	for (int i = 0; i < array_of_strings_length; i++) {
+		free(array_of_strings[i]);
+	} free(array_of_strings);
+	
+	free(string_count);
 
 	return 0;
 }
 
-int kmp_matcher (char text[], char pattern[]) {
+int kmp_matcher (char text[], char pattern[], int *prefix_array) {
 	int text_len = strlen(text);
 	int pattern_len = strlen(pattern);
 	if (text_len < pattern_len) //no point trying to match things
 		return 0;
-	int *prefix_array = malloc(pattern_len*sizeof(int));
-	kmp_prefix(pattern, prefix_array);
-	int i = 0; 
+	int i = 0;
 	int j = 0;
 	int occurrences = 0; //counter for the number of occurrences of pattern in text
 	while (i < text_len) {
@@ -217,13 +234,12 @@ int kmp_matcher (char text[], char pattern[]) {
 				i++;
 		}
 	}
-	
-	free(prefix_array);
 	return occurrences;
 }
 
-void kmp_prefix (char pattern[], int *prefix) {
+int* kmp_prefix (char pattern[]) {
 	int pattern_len = strlen(pattern);
+	int *prefix = malloc(pattern_len*sizeof(int));
 	int j = 0;
 	prefix[0] = 0; //first letter does not have any prefix
 	int i = 1;
@@ -241,4 +257,5 @@ void kmp_prefix (char pattern[], int *prefix) {
 			i++;
 		}
 	}
+	return prefix;
 }
