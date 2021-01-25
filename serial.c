@@ -102,7 +102,7 @@ int main(int argc, char *argv[]) {
 	
 	const unsigned char* data;
 	int i;
-	unsigned char * data_copy; //copy of data object
+	char* data_copy; //copy of data object
 	unsigned int payload_lenght;
 	/* Loop extracting packets as long as we have something to read, storing them inside array_of_payloads */
 	
