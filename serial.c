@@ -146,7 +146,7 @@ int main(int argc, char *argv[]) {
 	
 	/* For each payload, we call the string matching algorithm for every string in S */
 	int **prefix_array = malloc(array_of_strings_length*sizeof(int*));
-	/* Main thread is in charge of building the prefix_array */
+	
 	for (int i = 0; i < array_of_strings_length; i++) {
 		prefix_array[i] = kmp_prefix(array_of_strings[i]);
 	}
