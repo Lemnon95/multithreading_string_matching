@@ -122,7 +122,7 @@ int main(int argc, char *argv[]) {
 			payload = dump_TCP_packet(data_copy, &payload_lenght, header->len); //getting the payload
 			
 		if(payload != NULL) { //we store it in array of payloads
-			array_of_payloads[count] = malloc(payload_lenght+1); //we have to allocate memory for storing this payload
+			array_of_payloads[count] = malloc(payload_lenght); //we have to allocate memory for storing this payload
 			if (count < array_of_payloads_length) {
 				memcpy(array_of_payloads[count], payload, payload_lenght);
 				count++;
