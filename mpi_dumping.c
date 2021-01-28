@@ -81,7 +81,7 @@ int main (int argc, char *argv[]){
 	
 	while( fscanf(fp, "%s", str) != EOF ) //we read all the file word by word
 	{
-		array_of_strings[count] = malloc(strlen(str)+1); //we have to allocate memory for storing this payload
+		array_of_strings[count] = malloc(strlen(str)); 
 		if (count < array_of_strings_length) {
 			strcpy(array_of_strings[count], str); //copy string into array
 			count++;
@@ -101,7 +101,7 @@ int main (int argc, char *argv[]){
 		array_of_strings = (char **)realloc(array_of_strings, (count*sizeof(char *)));
 	array_of_strings_length = count;
 	
-
+	
 	int num_packets, flag = 0;
 	Packet *a = NULL;
 	if (my_rank == 0){ //rank 0 is in charge of gathering all Packets
@@ -114,12 +114,12 @@ int main (int argc, char *argv[]){
 		}
 		else {
 			a = malloc(sizeof(Packet));
-			int size_a = 1;//gcc -g -Wall -fopenmp openmp_data.c -o openmp_data -lpcap
+			int size_a = 1;
 			num_packets = 0;
 			const unsigned char *data;
 			int i;
 			while ((i = pcap_next_ex(pcap, &header, &data)) >= 0) {
-				memcpy(a[num_packets].data, data, header->len); //we store the payload in the array of payloads
+				memcpy(a[num_packets].data, data, header->len); //we store the packet in the array of packets
 				a[num_packets].len = header->len;
 				num_packets++;
 				if (num_packets == size_a) {
@@ -132,7 +132,6 @@ int main (int argc, char *argv[]){
 			a = realloc(a, num_packets*sizeof(Packet)); //we reallocate memory to get even
 		}
 	}
-
 	MPI_Bcast(&num_packets, 1, MPI_INT, 0, MPI_COMM_WORLD);
 	MPI_Bcast(&flag, 1, MPI_INT, 0, MPI_COMM_WORLD);
 	//we check for error in pcap file opening
@@ -140,7 +139,8 @@ int main (int argc, char *argv[]){
 		MPI_Finalize();
 		return 0;
 	}
-	/* At this point, we have the total size, so we can allocate local arrays of packets */
+	
+	
 	int *local_size = malloc(comm_sz*sizeof(int)); //array that stores the number of packets that each process must have
 	int *displ = malloc(comm_sz*sizeof(int)); //array of displacement for Scatterv
 
@@ -160,9 +160,12 @@ int main (int argc, char *argv[]){
 	MPI_Scatterv(a, local_size, displ, MPI_Packet, local_packets, local_size[my_rank], MPI_Packet, 0, MPI_COMM_WORLD);
 	free(a);
 
-  double local_start, local_finish, local_elapsed, elapsed;
+
+	/*Start Performance Evaluation */
+	double local_start, local_finish, local_elapsed, elapsed;
 	MPI_Barrier(MPI_COMM_WORLD);
 	local_start = MPI_Wtime();
+  
 	/* Every Process now has its share of packets, it's time to dump the payloads! */
 	char **local_payloads = malloc(local_size[my_rank]*sizeof(char*)); //we allocate memory for the local array of payloads
 
@@ -174,7 +177,7 @@ int main (int argc, char *argv[]){
 		else //tcp
 			payload = dump_TCP_packet(local_packets[i].data, &payload_length , local_packets[i].len); // Getting the payload
 		if(payload != NULL) {  // Save payload into array of payload
-			local_payloads[i] = malloc(payload_length+1);
+			local_payloads[i] = malloc(payload_length);
 			memcpy(local_payloads[i], payload, payload_length);
 		}
 		else { // If the packet is not valid we just save a " " string inside local array of payloads
