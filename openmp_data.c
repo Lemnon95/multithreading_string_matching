@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
 	while(fscanf(fp, "%s", str) != EOF) //we read all the file word by word
 	{
 
-		array_of_strings[count] = malloc(strlen(str)+1); //we have to allocate memory for storing this payload
+		array_of_strings[count] = malloc(strlen(str)); 
 		if (count < array_of_strings_length) {
 			strcpy(array_of_strings[count], str); //copy string into array
 			count++;
@@ -137,7 +137,7 @@ int main(int argc, char *argv[]) {
 			payload = dump_TCP_packet(data, &payload_length, packet_len); // Getting the payload
 
 		if(payload != NULL) {  // Save payload into array of payload
-			array_of_payloads[i] = malloc(payload_length+1);
+			array_of_payloads[i] = malloc(payload_length);
 			memcpy(array_of_payloads[i], payload, payload_length);
 		}
 		else { // If the packet is not valid we save a " " message into array of payloads
