@@ -123,11 +123,13 @@ int main(int argc, char *argv[]) {
 	else
 		type = "tcp";
 		
+	//now we compile the filter for the live sniffing
 	if (pcap_compile(live_handle, &filter, type, 0, net) == -1) {
 	 	fprintf(stderr, "Couldn't parse filter %s: %s\n", type, pcap_geterr(live_handle));	
 		 return(1);
 	}
-	 
+	
+	//now we apply the filter just compiled
 	if (pcap_setfilter(live_handle, &filter) == -1) {
 		fprintf(stderr, "Couldn't install filter %s: %s\n", type, pcap_geterr(live_handle));
 		return(1);
