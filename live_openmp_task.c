@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
 	while( fscanf(fp, "%s", str) != EOF ) //we read all the file word by word
 	{
 
-		array_of_strings[count] = malloc(strlen(str)+1); //we have to allocate memory for storing this string
+		array_of_strings[count] = malloc(strlen(str)); //we have to allocate memory for storing this string
 		if (count < array_of_strings_length) {
 			strcpy(array_of_strings[count], str); //copy string into array
 			count++;
@@ -174,7 +174,7 @@ int main(int argc, char *argv[]) {
 								
 					if(payload != NULL) { //we store it in array of payloads
 					
-						array_of_payloads[packet_count] = malloc(packet_len+1); //we have to allocate memory for storing this payload
+						array_of_payloads[packet_count] = malloc(packet_len); //we have to allocate memory for storing this payload
 						strcpy(array_of_payloads[packet_count], payload); //copy payload into array
 					}
 					else { // If the packet is not valid we save a " " message into array of payloads
