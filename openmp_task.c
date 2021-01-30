@@ -27,7 +27,7 @@ int main(int argc, char *argv[]) {
 	char errbuf[PCAP_ERRBUF_SIZE];
 	struct pcap_pkthdr *header;
 	char *filepath;
-	char *strings_file_path;
+	char *strings_file_path; //for storing path of file <strings.txt>
 	int thread_count;
 	int packet_type = UDP; //default udp
 	
@@ -52,32 +52,32 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 	
-	//we read strings for the string matching from txt file 
+	/* Reading strings for the string matching from txt file */
 	char **array_of_strings = malloc(sizeof(char *));
-	int array_of_strings_length = 1;	
+	int array_of_strings_length = 1; //keeps track of array's size	
 	int count = 0; //actual number of strings
 
-	//open file and check errors
+	//open file and check for errors
 	FILE *fp = fopen(strings_file_path,"r");
 	if (fp == NULL) {
 		perror("error opening file: ");
 		exit(1);
 	}
-	char str[100]; //buffer when we save the strings in the file
+	char str[100]; //buffer for saving the strings once pulled out by fscanf
 	
 	while( fscanf(fp, "%s", str) != EOF ) //we read all the file word by word
 	{
 
-		array_of_strings[count] = malloc(strlen(str));
+		array_of_strings[count] = malloc(strlen(str)); //we have to allocate memory for this string
 		if (count < array_of_strings_length) {
 			strcpy(array_of_strings[count], str); //copy string into array
-			count++;
+			count++; //actual number of strings have grown by 1
 		}
 		else { //count == array_of_strings_length
 			//it looks like we exceeded maximum capacity of array, so we use a realloc to reallocate memory
 			array_of_strings = (char **)realloc(array_of_strings, (array_of_strings_length*2)*sizeof(char *));
 			strcpy(array_of_strings[count], str); //copy string into array
-			count++;
+			count++; //actual number of strings have grown by 1
 			array_of_strings_length *= 2;
 		}
 	}
