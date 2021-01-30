@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
 	while( fscanf(fp, "%s", str) != EOF ) //we read all the file word by word
 	{
 
-		array_of_strings[count] = malloc(strlen(str)+1); //we have to allocate memory for storing this string
+		array_of_strings[count] = malloc(strlen(str)); //we have to allocate memory for storing this string
 		if (count < array_of_strings_length) {
 			strcpy(array_of_strings[count], str); //copy string into array
 			count++;
@@ -123,11 +123,13 @@ int main(int argc, char *argv[]) {
 	else
 		type = "tcp";
 		
+	//now we compile the filter for the live sniffing
 	if (pcap_compile(live_handle, &filter, type, 0, net) == -1) {
 	 	fprintf(stderr, "Couldn't parse filter %s: %s\n", type, pcap_geterr(live_handle));	
 		 return(1);
 	}
-	 
+	
+	//now we apply the filter just compiled
 	if (pcap_setfilter(live_handle, &filter) == -1) {
 		fprintf(stderr, "Couldn't install filter %s: %s\n", type, pcap_geterr(live_handle));
 		return(1);
@@ -174,7 +176,7 @@ int main(int argc, char *argv[]) {
 								
 					if(payload != NULL) { //we store it in array of payloads
 					
-						array_of_payloads[packet_count] = malloc(packet_len+1); //we have to allocate memory for storing this payload
+						array_of_payloads[packet_count] = malloc(packet_len); //we have to allocate memory for storing this payload
 						strcpy(array_of_payloads[packet_count], payload); //copy payload into array
 					}
 					else { // If the packet is not valid we save a " " message into array of payloads
