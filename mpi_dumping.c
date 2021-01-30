@@ -44,7 +44,7 @@ int main (int argc, char *argv[]){
 	MPI_Type_create_struct(2, array_of_blocklengths, array_of_displacements, array_of_types, &MPI_Packet);
 	MPI_Type_commit(&MPI_Packet);
 	
-	char *strings_file_path;
+	char *strings_file_path; //for storing path of file <strings.txt>
 
 	/* Getting packet type from input */
 	int packet_type;
@@ -66,32 +66,32 @@ int main (int argc, char *argv[]){
 		exit(1);
 	}
 	
-	//we read strings for the string matching from txt file 
-	char **array_of_strings = malloc(sizeof(char *));
-	int array_of_strings_length = 1;	
+	/* Reading strings for the string matching from txt file */
+	char **array_of_strings = malloc(sizeof(char *)); // for storing the patterns for string matching
+	int array_of_strings_length = 1; //keeps track of array's size	
 	int count = 0; //actual number of strings
 
-	//open file and check errors
+	//open file and check for errors
 	FILE *fp = fopen(strings_file_path,"r");
 	if (fp == NULL) {
 		perror("error opening file: ");
 		exit(1);
 	}
-	char str[100]; //buffer when we save the strings in the file
+	char str[100]; //buffer for saving the strings once pulled out by fscanf
 	
-	while( fscanf(fp, "%s", str) != EOF ) //we read all the file word by word
+	while(fscanf(fp, "%s", str) != EOF) //we read all the file word by word
 	{
-		array_of_strings[count] = malloc(strlen(str)); 
+		array_of_strings[count] = malloc(strlen(str)); //we have to allocate memory for this string
 		if (count < array_of_strings_length) {
 			strcpy(array_of_strings[count], str); //copy string into array
-			count++;
+			count++; //actual number of strings have grown by 1
 		}
 		else { //count == array_of_strings_length
 			//it looks like we exceeded maximum capacity of array, so we use a realloc to reallocate memory
 			array_of_strings = (char **)realloc(array_of_strings, (array_of_strings_length*2)*sizeof(char *));
 			strcpy(array_of_strings[count], str); //copy string into array
-			count++;
-			array_of_strings_length *= 2;
+			count++; //actual number of strings have grown by 1
+			array_of_strings_length *= 2; 
 		}
 	}
 	fclose(fp);
@@ -102,8 +102,8 @@ int main (int argc, char *argv[]){
 	array_of_strings_length = count;
 	
 	
-	int num_packets, flag = 0;
-	Packet *a = NULL;
+	int num_packets, flag = 0; //flag is for errors
+	Packet *a = NULL; //pointer (array) for MPI_Scatterv, it must be common between all processes
 	if (my_rank == 0){ //rank 0 is in charge of gathering all Packets
 		char errbuff[PCAP_ERRBUF_SIZE];
 		struct pcap_pkthdr *header;
@@ -114,24 +114,25 @@ int main (int argc, char *argv[]){
 		}
 		else {
 			a = malloc(sizeof(Packet));
-			int size_a = 1;
-			num_packets = 0;
+			int size_a = 1; //keeps track of array's size
+			num_packets = 0;  //actual number of packets in array a
 			const unsigned char *data;
 			int i;
 			while ((i = pcap_next_ex(pcap, &header, &data)) >= 0) {
 				memcpy(a[num_packets].data, data, header->len); //we store the packet in the array of packets
-				a[num_packets].len = header->len;
-				num_packets++;
+				a[num_packets].len = header->len; //we store the len of this packet inside the proper field in the structure
+				num_packets++; //actual number of packets has grown by 1
 				if (num_packets == size_a) {
-					a = realloc(a, (size_a*2)*sizeof(Packet));
+					a = realloc(a, (size_a*2)*sizeof(Packet)); //it looks like we exceeded maximum capacity of array, so we use a realloc to reallocate memory
 					size_a *= 2;
 				}
 			}
 			pcap_close(pcap);
 			if (!(size_a == num_packets))
-			a = realloc(a, num_packets*sizeof(Packet)); //we reallocate memory to get even
+				a = realloc(a, num_packets*sizeof(Packet)); //we reallocate memory to get even
 		}
 	}
+	/* Using MPI_Bcast to broadcast num packets and flag */
 	MPI_Bcast(&num_packets, 1, MPI_INT, 0, MPI_COMM_WORLD);
 	MPI_Bcast(&flag, 1, MPI_INT, 0, MPI_COMM_WORLD);
 	//we check for error in pcap file opening
