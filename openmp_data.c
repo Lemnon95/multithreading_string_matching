@@ -164,10 +164,12 @@ int main(int argc, char *argv[]) {
 					private_string_count[i] += kmp_matcher(array_of_payloads[k], array_of_strings[i], prefix_array[i]);
 
 		// Merge private string count into shared string count array
-		#pragma omp critical
-		{
-		for (int i = 0; i < array_of_strings_length; i++)
+		
+		
+		for (int i = 0; i < array_of_strings_length; i++) {
+			#pragma omp atomic  
 			string_count[i] += private_string_count[i];
+			
 		}
 		free(private_string_count);
 	}

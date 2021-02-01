@@ -167,9 +167,10 @@ int main(int argc, char *argv[]) {
 								
 	
 				 	// Merge private string count into shared string count array
-					#pragma omp critical
-					{
-					for (int i = 0; i < array_of_strings_length; i++)
+					
+					
+					for (int i = 0; i < array_of_strings_length; i++) {
+						#pragma omp atomic
 						string_count[i]+=private_string_count[i];
 					}
 			 	
