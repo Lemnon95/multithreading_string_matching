@@ -3,6 +3,8 @@
 The aim of the project is to produce a **multithread** application that performs the Knutth-Morris-Pratt algorithm for string matching, on a series of pcap packets. 
 The project consists of 1 serial program, and of 3 multithread programs, of which 2 have been realized using **OpenMP** library, and the one remaining using **Open MPI**.
 
+I realized this project alongside [@battisti98](https://github.com/battisti98) for the Multicore Programming course at University La Sapienza.
+
 ## Technologies
 
 * C Programming Language
@@ -18,6 +20,8 @@ To perform tests, it has been used vagrant, in conjunction with the Vagrant file
 
 ## Open MP Programs
 
-openmp_data.c: data prallelism.
-openmp_task.c: task parallelims.
+There are two versions of Open MP programs, one that follows the "Data Parallelism" paradigm (openmp_data.c) and the other that follows the "Task Parallelism" (openmp_task.c).
 
+## What I Learned
+
+First of all I learned how to work in a multithread environment using MPI and OpenMP, and I also learned how to use the libpcap library to work with pcap files. 
