@@ -20,7 +20,7 @@ To perform tests, it has been used vagrant, in conjunction with the Vagrant file
 
 ## Open MP Programs
 
-There are two versions of Open MP programs, one that follows the "Data Parallelism" paradigm (openmp_data.c) and the other that follows the "Task Parallelism" (openmp_task.c).
+There are two versions of the Open MP programs, one that follows the "Data Parallelism" paradigm (openmp_data.c) and the other that follows the "Task Parallelism" (openmp_task.c).
 
 ## What I Learned
 
