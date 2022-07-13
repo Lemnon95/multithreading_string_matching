@@ -3,7 +3,7 @@
 The aim of the project is to produce a **multithread** application that performs the Knutth-Morris-Pratt algorithm for string matching, on a series of pcap packets. 
 The project consists of 1 serial program, and of 3 multithread programs, of which 2 have been realized using **OpenMP** library, and the one remaining using **Open MPI**.
 
-I realized this project alongside [@battisti98](https://github.com/battisti98) for the Multicore Programming course at University La Sapienza.
+I realized this project in collaboration with [@battisti98](https://github.com/battisti98) for the Multicore Programming course at University La Sapienza.
 
 ## Technologies
 
